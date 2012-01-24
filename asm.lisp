@@ -53,23 +53,20 @@
 ;;;; Utilities
 
 (defgeneric msb (x)
-  (:method ((x integer)) (ldb (byte 8 8) x)))
+  (:method ((x integer)) (ldb (byte 8 8) x))
+  (:method ((value delay))
+    (delay ((:name "MSB") value)
+      (msb value))))
 
 (defgeneric lsb (x)
-  (:method ((x integer)) (ldb (byte 8 0) x)))
-
-(defmethod msb ((value delay))
-  (delay ((:name "MSB") value) (msb value)))
-
-(defmethod lsb ((value delay))
-  (delay ((:name "LSB") value) (lsb value)))
+  (:method ((x integer)) (ldb (byte 8 0) x))
+  (:method ((value delay))
+    (delay ((:name "LSB") value)
+      (lsb value))))
 
 (defun 8-bit-encodable (x)
-  (if (and (integerp x)
-	   (>= x -128)
-	   (< x 256))
-      x
-      (error "Operand ~A cannot be encoded as an 8-bit operand." x)))
+  (etypecase x
+    ((integer -128 255) x)))
 
 (defun encode-byte (byte &optional (name "byte"))
   (vector (delay ((:name name) byte) (lsb (8-bit-encodable byte)))))
