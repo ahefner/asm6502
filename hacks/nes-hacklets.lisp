@@ -450,13 +450,12 @@ New byte at ~X is ~8,'0,,B (versus ~8,'0,,B" index x y)))
           (asl))
         (stx (mem +ppu-cr2+))
         (poke #b00111000 +ppu-cr2+)
-                                        ;(poke #b00011000 +ppu-cr2+)
+        ;;(poke #b00011000 +ppu-cr2+)
+
         ;; I don't have the first clue as to why nothing I do to detect
         ;; vblank works in Nestopia here. Fortunately, waiting for sprite 0
         ;; hit to clear does work, although it screws us out of our vblank time.
-        (as/until :positive
-          (lda (mem +ppu-status+))
-          (asl))
+        (as/until :no-overflow (bita (mem +ppu-status+)))
         (jmp (mem (label :runloop2)))))
 
   ;;;; -------------------------------------------------------
@@ -673,6 +672,9 @@ New byte at ~X is ~8,'0,,B (versus ~8,'0,,B" index x y)))
         (rts)))
 
     (subprogram (sawtooth-440 "Sawtooth 440")
+      ;; The next few hacks use timed sections, so align to a page here
+      ;; and hopefully they all fit.
+      (align 256 #xEA)
       (poke 0 +ppu-cr1+)                ; Disable NMI
       (poke 0 +ppu-cr2+)                ; Disable display
       (poke 0 +papu-control+)           ; Silence audio
@@ -1043,6 +1045,8 @@ New byte at ~X is ~8,'0,,B (versus ~8,'0,,B" index x y)))
     (set-label 'reset-menu)
     (sei)
     (cld)
+    (ldx (imm #xFF))                    ; Set stack pointer
+    (txs)
     (poke (lsb (label 'vblank-ticker)) *shadow-nmi*)
     (poke (msb (label 'vblank-ticker)) (1+ *shadow-nmi*))
     (poke (lsb (label 'ignore-irq)) *shadow-irq*)

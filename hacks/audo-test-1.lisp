@@ -1,10 +1,10 @@
 ;;;; NES audio test: Output a saw waveform through the DAC from a
 ;;;; timed loop.
 
-(defpackage :audio-demo-1
+(defpackage :audio-test-1
   (:use :common-lisp :6502 :6502-modes :asm6502 :asm6502-utility :asm6502-nes))
 
-(in-package :audio-demo-1)
+(in-package :audio-test-1)
 
 (defvar *path* #.*compile-file-truename*)
 

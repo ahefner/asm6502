@@ -136,7 +136,8 @@
   (:method (context vector) (context-emit context vector)))
 
 (defgeneric link (context)
-  (:documentation "Prepare and return final, fully resolved code vector."))
+  (:documentation "Prepare and return final, fully resolved code vector.")
+  (:method (context) (fixup-vector (context-code-vector context))))
 
 (defvar *context* nil "Current assembly context")
 
@@ -200,9 +201,6 @@
      (when (= num-unresolved last-unresolved)
        (error "Unable to finalize output. The following errors occured:~%~A~%" errors))
      (setf last-unresolved num-unresolved))))
-
-(defmethod link (context)
-  (fixup-vector (context-code-vector context)))
 
 ;;; Note that context-code-vector isn't part of the context protocol,
 ;;; but defined on basic-contexts.

@@ -1,4 +1,4 @@
-;;;; NES audio test: Looping audio through the 7-bit DAC.
+;;;; Music demo: Looping audio through the 7-bit DAC.
 
 ;;;; This program will treat the listener to a seamlessly looping
 ;;;; excerpt from one of western music's great achievements,
@@ -9,10 +9,10 @@
 ;;;; available. The sound quality is surprisingly good (though less so
 ;;;; on emulators other than my own, because of different DAC curves).
 
-(defpackage :audio-demo-2
+(defpackage :music-demo
   (:use :common-lisp :6502 :6502-modes :asm6502 :asm6502-utility :asm6502-nes))
 
-(in-package :audio-demo-2)
+(in-package :music-demo)
 
 (defvar *path* #.*compile-file-truename*)
 
@@ -45,13 +45,16 @@
                   (link *context*)))))
           (dumpbin "/tmp/prg.bin" program)
           (write-ines ,filename program ,@rom-args))))
- (program ("/tmp/audio-test-2.nes" :mapper 4)
+ (program ("/tmp/music-demo.nes" :mapper 4)
   (advance-to #xE000)                   ; Put everything in the last bank.
   (with-label nmi (rti))
   (with-label irq (rti))
   (with-label reset
     ;; Initialize
     (sei)
+    (cld)
+    (ldx (imm #xFF))
+    (txs)
     (poke 0 +ppu-cr1+)                  ; Disable NMI
     (poke 0 +ppu-cr2+)                  ; Disable display
     (poke 0 +papu-control+)             ; Silence audio

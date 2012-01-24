@@ -17,6 +17,9 @@
    ;; Program Entry Point
    (set-label 'entry-point)
    (sei)                                ; Disable interrupts
+   (cld)
+   (ldx (imm #xFF))                     ; Init stack pointer
+   (txs)
    (lda (imm 3))
    (sta color)
 
@@ -35,10 +38,8 @@
    (lda (imm #x00))
    (sta (mem +vram-addr+))              ; ..write LSB
 
-   (lda color)                          ; Increment color variable
-   (clc)
-   (adc (imm 1))
-   (sta color)
+   (inc color)                          ; Increment and load color
+   (lda color)
 
    (lsr)                                ; Shift right two bits, so each
    (lsr)                                ; color appears for four frames.
