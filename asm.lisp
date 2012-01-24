@@ -3,12 +3,12 @@
 ;;;; Delayed evaluation
 
 (defvar *lazy-marker* '#:postponed)
-(defstruct delay name fun (value *lazy-marker*))
+(defstruct promise name fun (value *lazy-marker*))
 
 (define-condition resolvable-condition ()
-  ((text :initarg :text :accessor text))
+  ((path :initform nil :initarg :path :accessor path))
   (:report (lambda (condition stream)
-             (format stream "~A" (text condition)))))
+             (format stream "~A" (path condition)))))
 
 (defgeneric force (expression &optional force-p)
   (:documentation "Forces computing the value of a delayed expression"))
@@ -17,76 +17,65 @@
   (declare (ignore force-p))
   expression)
 
-(defmethod force ((delay delay) &optional (force-p t))
-  (if (not (eq (delay-value delay) *lazy-marker*))
-      (delay-value delay)
-      (handler-case (setf (delay-value delay) (funcall (delay-fun delay)))
+(defmethod force ((p promise) &optional (force-p t))
+  (if (not (eq (promise-value p) *lazy-marker*))
+      (promise-value p)
+      (handler-case (setf (promise-value p) (funcall (promise-fun p)))
         (resolvable-condition (condition)
-          (when (or (delay-name delay) (stringp force-p))
-            (setf (text condition)
-                  (format nil "~A~A~A: ~A"
-                          (if (stringp force-p) force-p "")
-                          (if (and (delay-name delay) (stringp force-p)) "/" "")
-                          (or (delay-name delay) "")
-                          (text condition))))
+          (setf (path condition) (cons (promise-name p) (path condition)))
           (funcall (if force-p #'error #'signal) condition)
-          delay))))
+          p))))
+
+(eval-when (:compile-toplevel :load-toplevel :execute)
+ (defun parse-binding (spec)
+   (etypecase spec
+     (symbol (list spec spec))
+     (cons spec))))
 
 (defmacro forcing (dependencies &body body)
-  (labels ((dep-name (spec) (etypecase spec (cons (first spec)) (symbol spec)))
-           (dep-expr (spec) (etypecase spec (cons (second spec)) (symbol spec)))
-           (dep-description (spec)
-             (etypecase spec
-               (cons (or (third spec) (princ-to-string (dep-name spec))))
-               (symbol (princ-to-string spec)))))
-    `((lambda ,(mapcar #'dep-name dependencies) ,@body)
-      ,@(loop for dep in dependencies
-              collect `(force ,(dep-expr dep) ,(dep-description dep))))))
+  (let ((bindings (mapcar #'parse-binding dependencies)))
+    `((lambda ,(mapcar #'first bindings) ,@body)
+      ,@(loop for b in bindings
+              collect `(force ,(second b))))))
 
-(defmacro delay (dependencies &body body)
-  (let ((name (second (find-if (lambda (x) (and (consp x) (eql :name (first x)))) dependencies))))
-    (setf dependencies (remove-if (lambda (x) (and (consp x) (eql :name (first x)))) dependencies))
-    `(force
-      (make-delay :name ,name :fun (lambda () (forcing ,dependencies ,@body)))
-      nil)))
+(defmacro delay (name dependencies &body body)
+  `(force
+    (make-delay :name ,name :fun (lambda () (forcing ,dependencies ,@body)))
+    nil))
 
 ;;;; Utilities
 
 (defgeneric msb (x)
   (:method ((x integer)) (ldb (byte 8 8) x))
   (:method ((value delay))
-    (delay ((:name "MSB") value)
-      (msb value))))
+    (delay :MSB (value) (msb value))))
 
 (defgeneric lsb (x)
   (:method ((x integer)) (ldb (byte 8 0) x))
   (:method ((value delay))
-    (delay ((:name "LSB") value)
-      (lsb value))))
+    (delay :LSB (value) (lsb value))))
 
 (defun 8-bit-encodable (x)
   (etypecase x
     ((integer -128 255) x)))
 
+(defun signed-octet (x)
+  (etypecase x
+    ((integer -128 127) x)))
+
 (defun encode-byte (byte &optional (name "byte"))
-  (vector (delay ((:name name) byte) (lsb (8-bit-encodable byte)))))
+  (vector (delay name (byte) (lsb (8-bit-encodable byte)))))
 
 (defun encode-signed-byte (x &optional (name "signed-byte"))
-  (vector (delay ((:name name) x)
-            (unless (and (>= x -128) (<= x 127))
-              (error "Signed byte out of range"))
-            (lsb x))))
+  (vector (delay name (x) (lsb (signed-octet x)))))
 
 (defun 16-bit-encodable (x)
-  (if (and (integerp x)
-	   (>= x 0)
-	   (< x 65536))
-      x
-      (error "Operand ~A cannot be encoded as a 16-bit operand." x)))
+  (etypecase x
+    ((integer 0 65535) x)))
 
-(defun encode-word (word &optional (name "encode"))
-  (vector (delay ((:name (format nil "~A LSB" name)) word) (lsb word))
-          (delay ((:name (format nil "~A MSB" name)) word) (msb word))))
+(defun encode-word (word &optional (name '(encode-word)))
+  (vector (delay (cons :lsb name) (word) (lsb word))
+          (delay (cons :msb name) (word) (msb word))))
 
 (defun join-masks (x y)
   (unless (zerop (logand x y))
@@ -246,13 +235,13 @@
 (defun emit (bytes) (context-emit *context* bytes))
 
 (defun label (name &optional (offset 0))
+  (assert (not (null *context*)))
   (let ((context *context*))
-    (unless context (error "Label ~A referenced in null context!" name))
-    (delay ()
+    (delay name (offset)
       (+ offset
          (or (context-find-label context name)
              (error 'resolvable-condition
-                    :text (format nil "Label ~A is undefined" name)))))))
+                    :path (format nil "Label ~A is undefined" name)))))))
 
 (defun set-label (name)
   (context-set-label *context* name)
@@ -325,7 +314,7 @@
 (defun rel (label)
   (let ((addr (context-address *context*))
         (label (label label)))
-    (relative (delay (label) (- label addr 2)))))
+    (relative (delay :relative (label) (- label addr 2)))))
 
 ;;; Instruction parameters, according to addressing mode
 
@@ -342,7 +331,7 @@
 
 (defmethod parameter-bytes ((mode indirect))
   (encode-word
-   (delay ((address (parameter mode)))
+   (delay nil ((address (parameter mode)))
      (if (= #xFF (logand address #xFF))
          (error "Indirect jump through ~X tickles 6502 page wraparound bug." address)
          address))))
