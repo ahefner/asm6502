@@ -16,7 +16,7 @@
            #:promise #:promise-name #:promise-fun #:delay #:force #:forcing
            #:binary-file
            #:context-emit #:context-address
-           #:context-code-vector #:fixup-vector #:link
+           #:context-code-vector #:link
            #:context-find-label #:context-set-label #:*context* #:basic-context
            #:emit #:label #:set-label #:advance-to #:align #:db #:dw #:rel #:*origin*
            #:opcode-cycles #:context-note-cycles #:counting-cycles #:local-context))

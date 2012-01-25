@@ -125,8 +125,8 @@
   (:method (context vector) (context-emit context vector)))
 
 (defgeneric link (context)
-  (:documentation "Prepare and return final, fully resolved code vector.")
-  (:method (context) (fixup-vector (context-code-vector context))))
+  (:documentation "Prepare and return final, assembled output.")
+  (:method (context) (resolve-vector (context-code-vector context))))
 
 (defvar *context* nil "Current assembly context")
 
@@ -165,21 +165,16 @@
 
 (defun resolve-vector (vector)
   (let (problems)
-    (values
-     (map 'vector (lambda (x)
-                    (handler-case (force x t)
-                      (resolvable-condition (c)
-                        (push (path c) problems)
-                        x)))
-          vector)
-     problems)))
-
-(defun fixup-vector (vector)
-  (multiple-value-bind (vector problems) (resolve-vector vector)
-    (when problems
-      (error "Unable to finalize output. The following errors occurred:~%~A~%"
-             problems))
-    vector))
+    (prog1
+        (map 'vector (lambda (x)
+                       (handler-case (force x t)
+                         (resolvable-condition (c)
+                           (push (path c) problems)
+                           x)))
+             vector)
+      (when problems
+        (error "Unable to resolve output due to the following:~%~A~%"
+               problems)))))
 
 ;;; Note that context-code-vector isn't part of the context protocol,
 ;;; but defined on basic-contexts.
