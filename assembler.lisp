@@ -104,11 +104,6 @@
 (defsetf binary-file (filename &rest args) (sequence)
   `(write-binary-file ,filename ,sequence ,@args))
 
-(defun invalid-operand-error (instr-description operand)
-  (error "Invalid operand or addressing mode for ~A: ~A"
-         (or instr-description "this instruction")
-         operand))
-
 ;;;; Assembly context protocol (symbol table, accumulated output)
 
 (defgeneric context-emit (context vector)
@@ -360,7 +355,13 @@
   `(progn
     (defmethod choose-opcode ((instruction (eql ',name)) parameter)
       (funcall #',encoder parameter ,@args))
-    (defun ,name (&optional operand) (context-emit-instruction *context* (assemble ',name operand)))))
+    (defun ,name (&optional operand)
+      (context-emit-instruction *context* (assemble ',name operand)))))
+
+(defun invalid-operand-error (instr-description operand)
+  (error "Invalid operand or addressing mode for ~A: ~A"
+         (or instr-description "this instruction")
+         operand))
 
 ;;; Group 1:
 ;;;        ORA     AND     EOR     ADC     STA     LDA     CMP     SBC
