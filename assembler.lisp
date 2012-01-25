@@ -171,7 +171,6 @@
      (map 'vector (lambda (x)
                     (handler-case (force x t)
                       (resolvable-condition (c)
-                        (break "~A" c)
                         (push (path c) problems)
                         x)))
           vector)
