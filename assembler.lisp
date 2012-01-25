@@ -17,13 +17,13 @@
   (declare (ignore force-p))
   expression)
 
-(defmethod force ((p promise) &optional (force-p t))
+(defmethod force ((p promise) &optional (error-p t))
   (if (not (eq (promise-value p) *lazy-marker*))
       (promise-value p)
       (handler-case (setf (promise-value p) (funcall (promise-fun p)))
         (resolvable-condition (condition)
           (setf (path condition) (cons (promise-name p) (path condition)))
-          (funcall (if force-p #'error #'signal) condition)
+          (funcall (if error-p #'error #'signal) condition)
           p))))
 
 (eval-when (:compile-toplevel :load-toplevel :execute)
@@ -89,10 +89,8 @@
                           (external-format :default)
                           (element-type '(unsigned-byte 8)))
   (with-open-file (out filename
-                       :if-exists if-exists
-                       :direction :output
-                       :external-format external-format
-                       :element-type element-type)
+                       :if-exists if-exists :element-type element-type
+                       :external-format external-format :direction :output)
     (write-sequence vector out)))
 
 (defun binary-file (filename &key (element-type '(unsigned-byte 8)))
