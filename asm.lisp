@@ -30,7 +30,7 @@
  (defun parse-binding (spec)
    (etypecase spec
      (symbol (list spec spec))
-     (cons spec))))
+     ((cons symbol (cons t null)) spec))))
 
 (defmacro forcing (dependencies &body body)
   (let ((bindings (mapcar #'parse-binding dependencies)))
@@ -40,19 +40,19 @@
 
 (defmacro delay (name dependencies &body body)
   `(force
-    (make-delay :name ,name :fun (lambda () (forcing ,dependencies ,@body)))
+    (make-promise :name ,name :fun (lambda () (forcing ,dependencies ,@body)))
     nil))
 
-;;;; Utilities
+;;;; Bits and bytes
 
 (defgeneric msb (x)
   (:method ((x integer)) (ldb (byte 8 8) x))
-  (:method ((value delay))
+  (:method ((value promise))
     (delay :MSB (value) (msb value))))
 
 (defgeneric lsb (x)
   (:method ((x integer)) (ldb (byte 8 0) x))
-  (:method ((value delay))
+  (:method ((value promise))
     (delay :LSB (value) (lsb value))))
 
 (defun 8-bit-encodable (x)
@@ -73,26 +73,36 @@
   (etypecase x
     ((integer 0 65535) x)))
 
-(defun encode-word (word &optional (name '(encode-word)))
-  (vector (delay (cons :lsb name) (word) (lsb word))
-          (delay (cons :msb name) (word) (msb word))))
+(defun encode-word (word &optional (name 'encode-word))
+  (vector (delay name (word) (lsb word))
+          (delay name (word) (msb word))))
 
 (defun join-masks (x y)
   (unless (zerop (logand x y))
     (error "Bitmasks ~A and ~A overlap!" x y))
   (logior x y))
 
-(defun dumpbin (filename vector)
-  (with-open-file (out filename :if-exists :supersede
-                                :direction :output
-                                :element-type '(unsigned-byte 8))
+;;;; Files
+
+(defun write-binary-file (filename vector &key
+                          (if-exists :supersede)
+                          (external-format :default)
+                          (element-type '(unsigned-byte 8)))
+  (with-open-file (out filename
+                       :if-exists if-exists
+                       :direction :output
+                       :external-format external-format
+                       :element-type element-type)
     (write-sequence vector out)))
 
-(defun loadbin (filename)
-  (with-open-file (in filename :element-type '(unsigned-byte 8))
+(defun binary-file (filename &key (element-type '(unsigned-byte 8)))
+  (with-open-file (in filename :element-type element-type)
     (let ((data (make-array (file-length in))))
       (read-sequence data in)
       data)))
+
+(defsetf binary-file (filename &rest args) (sequence)
+  `(write-binary-file ,filename ,sequence ,@args))
 
 (defun invalid-operand-error (instr-description operand)
   (error "Invalid operand or addressing mode for ~A: ~A"
@@ -129,95 +139,86 @@
 
 ;;; Basic implementation of assembly context
 
-(defclass symbol-table-trait ()
+(defclass symbol-table ()
   ((symbol-table :initform (make-hash-table :test 'equal))))
 
-(defmethod context-find-label ((context symbol-table-trait) symbol)
+(defmethod context-find-label ((context symbol-table) symbol)
   (with-slots (symbol-table) context
     (gethash symbol symbol-table)))
 
-(defmethod context-set-label ((context symbol-table-trait) symbol
+(defmethod context-set-label ((context symbol-table) symbol
                               &optional (address (context-address context)))
   (with-slots (symbol-table) context
     (setf (gethash symbol symbol-table) address)))
 
-(defclass code-vector-trait ()
+(defclass code-vector ()
   ((code-vector  :initarg :code-vector
                  :reader context-code-vector
                  :initform (make-array 0 :adjustable t :fill-pointer t))
    (address :initarg :address :accessor context-address :initform #x8000)))
 
-(defmethod context-emit ((context code-vector-trait) vector)
+(defmethod context-emit ((context code-vector) vector)
   (when (> (+ (context-address context) (length vector)) #x10000)
     (warn "Context emit of $~X bytes at ~X will overflow address space"
           (context-address context)
           (length vector)))
   (loop for x across vector do
-        (unless (typep x '(or (integer 0 255) delay))
+        (unless (typep x '(or (integer 0 255) promise))
           (error "Attempt to emit garbage (~A) at ~X" x (context-address context)))
         (vector-push-extend x (context-code-vector context)))
   (incf (context-address context) (length vector)))
 
-(defclass basic-context (code-vector-trait symbol-table-trait) ())
+(defclass basic-context (code-vector symbol-table) ())
 
 (defun resolve-vector (vector)
-  (let ((num-unresolved 0)
-        (error-stream (make-string-output-stream)))
+  (let (problems)
     (values
      (map 'vector (lambda (x)
-                    (handler-case (if (integerp x) x (force x "link"))
+                    (handler-case (force x t)
                       (resolvable-condition (c)
-                        (incf num-unresolved)
-                        (format error-stream "~A~%" c)
+                        (break "~A" c)
+                        (push (path c) problems)
                         x)))
           vector)
-     num-unresolved
-     (get-output-stream-string error-stream))))
+     problems)))
 
 (defun fixup-vector (vector)
-  (let ((errors nil)
-        (last-unresolved (length vector))
-        (num-unresolved nil)
-        (pass 0))
-    (loop
-     (incf pass)
-     (format *trace-output* "~&Link pass ~A~%" pass)
-     (setf (values vector num-unresolved errors) (resolve-vector vector))
-     (when (zerop num-unresolved) (return-from fixup-vector vector))
-     (when (= num-unresolved last-unresolved)
-       (error "Unable to finalize output. The following errors occured:~%~A~%" errors))
-     (setf last-unresolved num-unresolved))))
+  (multiple-value-bind (vector problems) (resolve-vector vector)
+    (when problems
+      (error "Unable to finalize output. The following errors occurred:~%~A~%"
+             problems))
+    vector))
 
 ;;; Note that context-code-vector isn't part of the context protocol,
 ;;; but defined on basic-contexts.
 
-(defclass delegate-context-trait ()
+(defclass delegate-context ()
   ((parent :reader context-parent :initarg :parent)))
 
-(defmethod context-address ((context delegate-context-trait))
+(defmethod context-address ((context delegate-context))
   (context-address (context-parent context)))
 
-(defmethod (setf context-address) (address (context delegate-context-trait))
+(defmethod (setf context-address) (address (context delegate-context))
   (setf (context-address (context-parent context)) address))
 
-(defclass delegate-code-vector-trait (delegate-context-trait) ())
+(defclass delegate-code-vector (delegate-context) ())
 
-(defmethod context-emit ((context delegate-code-vector-trait) vector)
+(defmethod context-emit ((context delegate-code-vector) vector)
   (context-emit (context-parent context) vector))
 
-(defclass delegate-symbol-definition-trait (delegate-context-trait) ())
-(defclass delegate-symbol-lookup-trait     (delegate-context-trait) ())
+(defclass delegate-symbol-definition (delegate-context) ())
+(defclass delegate-symbol-lookup     (delegate-context) ())
 
-(defmethod context-find-label ((context delegate-symbol-lookup-trait) symbol)
+(defmethod context-find-label ((context delegate-symbol-lookup) symbol)
   (context-find-label (context-parent context) symbol))
 
-(defmethod context-set-label ((context delegate-symbol-definition-trait) symbol
+(defmethod context-set-label ((context delegate-symbol-definition) symbol
                               &optional (address (context-address context)))
   (context-set-label (context-parent context) symbol address))
 
-(defclass local-symbol-table-trait (delegate-symbol-lookup-trait symbol-table-trait) ())
+(defclass local-symbol-table (delegate-symbol-lookup symbol-table) ())
 
-(defmethod context-find-label ((context local-symbol-table-trait) symbol) ; This is dumb
+(defmethod context-find-label ((context local-symbol-table) symbol) ; This is dumb
   (with-slots (symbol-table) context
     (multiple-value-bind (value foundp) (gethash symbol symbol-table)
       (if foundp
@@ -227,7 +228,7 @@
 ;;; Local context, the base for building local symbol scopes and
 ;;; special-purpose contexts on.
 
-(defclass local-context (delegate-code-vector-trait local-symbol-table-trait)
+(defclass local-context (delegate-code-vector local-symbol-table)
   ())
 
 ;;;; Helpers

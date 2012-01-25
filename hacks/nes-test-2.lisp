@@ -28,7 +28,8 @@
 (defparameter *lastj* (zp 3))
 (defparameter *jtmp* (zp 2))
 
-(emitting-program ("/tmp/nes-test-2.nes" :chr (loadbin (merge-pathnames "test2.chr" *path*)))
+(emitting-program ("/tmp/nes-test-2.nes"
+                   :chr (binary-file (merge-pathnames "test2.chr" *path*)))
   (set-label 'reset)
   (sei)
   (ldx (imm #xFF))

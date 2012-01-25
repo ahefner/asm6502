@@ -23,9 +23,8 @@
 ;; matter how I tweak the dither settings).
 
 (defun load-audio ()
-  ;(loadbin "/home/hefner/cl/asm6502/fingers_30299.pcm")
   (process-dac-waveform
-   (loadbin (merge-pathnames "fingers_30299.pcm" *path*))
+   (binary-file (merge-pathnames "fingers_30299.pcm" *path*))
    :prescale 0.5
    :white-noise-bits 0.4
    :error-feedback 1.0))
@@ -43,7 +42,7 @@
                                   :address #xC000)))
                   ,@body
                   (link *context*)))))
-          (dumpbin "/tmp/prg.bin" program)
+          (setf (binary-file "/tmp/prg.bin") program)
           (write-ines ,filename program ,@rom-args))))
  (program ("/tmp/music-demo.nes" :mapper 4)
   (advance-to #xE000)                   ; Put everything in the last bank.

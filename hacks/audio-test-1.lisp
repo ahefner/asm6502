@@ -14,7 +14,7 @@
              (let ((*context* (make-instance 'basic-context :address #xC000)))
                ,@body
                (link *context*))))
-     (dumpbin "/tmp/prg.bin" program)
+     (setf (binary-file "/tmp/prg.bin") program)
      (write-ines ,filename program ,@rom-args)))
 
 (program ("/tmp/audio-test-1.nes")

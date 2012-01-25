@@ -12,9 +12,11 @@
 
 (defpackage :asm6502
   (:use :common-lisp :6502 :6502-modes)
-  (:export #:msb #:lsb #:delay #:delay-name #:delay-fun #:force
-           #:forcing #:dumpbin #:loadbin #:context-emit #:context-address
-           #:context-code-vector #:fixup-vector #:link #:encode-byte #:encode-word
+  (:export #:msb #:lsb #:encode-byte #:encode-word
+           #:promise #:promise-name #:promise-fun #:delay #:force #:forcing
+           #:binary-file
+           #:context-emit #:context-address
+           #:context-code-vector #:fixup-vector #:link
            #:context-find-label #:context-set-label #:*context* #:basic-context
            #:emit #:label #:set-label #:advance-to #:align #:db #:dw #:rel #:*origin*
            #:opcode-cycles #:context-note-cycles #:counting-cycles #:local-context))

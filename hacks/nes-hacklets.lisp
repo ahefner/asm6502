@@ -57,9 +57,9 @@
                (let ((*context* (make-instance 'basic-context :address #x8000)))
                  ,@body
                  *context*)))
-          (current-rom (and *current-prg* (loadbin (merge-pathnames
-                                                    *current-prg*
-                                                    *path*)))))
+          (current-rom (and *current-prg* (binary-file (merge-pathnames
+                                                        *current-prg*
+                                                        *path*)))))
      (when current-rom
        (format t "~&PRG size:~X~%Changed extents: ~X-~X~&"
                (length program)
@@ -70,7 +70,7 @@
                          :end1 (length current-rom)
                          :end2 (length current-rom)))
        (check-compatibility program current-rom)
-       (dumpbin "/tmp/hacklets.bin" program))
+       (setf (binary-file "/tmp/hacklets.bin") program))
      (write-ines ,filename program ,@rom-args)))
 
 (defun check-compatibility (new current)
@@ -151,7 +151,7 @@ New byte at ~X is ~8,'0,,B (versus ~8,'0,,B" index x y)))
 
 (program ("/tmp/hacklets.nes"
           :mapper 4
-          :chr (loadbin (merge-pathnames "test2m.chr" *path*)))
+          :chr (binary-file (merge-pathnames "test2m.chr" *path*)))
 
   (bank (#x8000 #x4000))                ; 0,1
   (bank (#x8000 #x4000))                ; 2,3

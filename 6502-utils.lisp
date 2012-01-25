@@ -7,12 +7,12 @@
 ;;;; Small utilities
 
 (defun poke (value address)
-  (when (typep value '(or integer delay))
+  (when (typep value '(or integer promise))
     (setf value (imm value)))
   (lda value)
   (sta (typecase address
          ((integer 0 255) (zp address))
-         ((or integer delay) (mem address))
+         ((or integer promise) (mem address))
          (t address))))
 
 (defun pokeword (value address)

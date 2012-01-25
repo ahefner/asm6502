@@ -46,11 +46,11 @@ unknown, the first value is NIL and the second T."
 ;;; in nested non-cycle-counting context, but sorry, no.
 (defgeneric context-note-cycles (context num-cycles)
   (:method (c n) (declare (ignore c n)))
-  (:method ((context delegate-context-trait) num-cycles)
+  (:method ((context delegate-context) num-cycles)
     (context-note-cycles (context-parent context) num-cycles)))
 
-(defclass cycle-counting-context (delegate-code-vector-trait
-                                  delegate-symbol-lookup-trait)
+(defclass cycle-counting-context (delegate-code-vector
+                                  delegate-symbol-lookup)
   ((cycle-count :initform 0 :accessor cycle-count :initarg :cycle-count)
    (precise-p   :initform t   :accessor precise-p   :initarg :precise-p)))
 

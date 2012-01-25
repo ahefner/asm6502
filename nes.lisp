@@ -68,15 +68,15 @@
   "Write a iNES (.nes) file."
   (assert (zerop (mod (length prg) #x4000)))
   (assert (zerop (mod (length chr) #x2000)))
-  (dumpbin filename
-           (concatenate 'vector
-                        (ines-header (/ (length prg) #x4000)
-                                     (/ (length chr) #x2000)
-                                     :mirror-mode mirror-mode
-                                     :mapper mapper
-                                     :sram sram)
-                          prg
-                          chr))
+  (setf (binary-file filename)
+        (concatenate 'vector
+                     (ines-header (/ (length prg) #x4000)
+                                  (/ (length chr) #x2000)
+                                  :mirror-mode mirror-mode
+                                  :mapper mapper
+                                  :sram sram)
+                     prg
+                     chr))
   (format *trace-output* "~&Created \"~A\"~%" filename)
   (values))
 
@@ -89,13 +89,12 @@
 (defun ppuxy (x y &optional (nametable #x2000))
   (ppuaddr (+ nametable x (* y 32))))
 
-
 ;;;; DAC stuff
 
-;;; I'm sure these maps are way off. My measurement methods are bogus,
-;;; and my results inconsistent. Regardless, I'm convinced there's a
-;;; significant curve, correcting for which will greatly improve the
-;;; quality of digital audio output. To be continued.
+;;; I'm sure these maps are way off. My methods are bogus, my results
+;;; inconsistent. Regardless, I'm convinced there's a significant
+;;; curve, correcting for which will greatly improve the quality of
+;;; digital audio output. To be continued.
 
 (defparameter *dac-reverse-map*
   #(0 1 1 2 3 3 4 5 5 6 7 7 8 9 9 10 11 11 12 13 14 14 15 16 16 17 18 19 19
