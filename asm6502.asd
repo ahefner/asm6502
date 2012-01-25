@@ -5,7 +5,7 @@
   :license "MIT-style license"
   :serial t
   :components ((:file "package")
-               (:file "asm")
+               (:file "assembler")
                (:file "cycle-counting")
                (:file "6502-utils")
                (:file "nes")))
