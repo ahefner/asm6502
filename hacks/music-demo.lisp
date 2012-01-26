@@ -83,7 +83,7 @@
                 (lda (zp 4))            ; Carry into high address byte
                 (adc (imm 0))
                 (tax)
-                (lda (abx (label :msbtable (- #x80))))
+                (lda (abx (label :msbtable :offset (- #x80))))
                 (lsr)                   ; Low bit is carry into bank number
                 (ora (imm #x80))
                 (sta (zp 4))
