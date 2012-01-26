@@ -71,6 +71,13 @@
        ,@body
        (funcall (condition-to-branch ',condition) (rel ',sym)))))
 
+(defmacro procedure (name &body body)
+  `(progn
+     (set-label ',name)
+     (let* ((,name (make-instance 'local-context :parent *context*))
+            (*context* ,name))
+       ,@body)))
+
 ;;; Delays and timed sections
 
 (defun emit-delay (delay-cycles)

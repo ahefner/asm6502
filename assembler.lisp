@@ -205,15 +205,13 @@
 
 (defclass local-symbol-table (delegate-symbol-lookup symbol-table) ())
 
-(defmethod context-find-label ((context local-symbol-table) symbol) ; This is dumb
+(defmethod context-find-label ((context local-symbol-table) symbol)
   (with-slots (symbol-table) context
-    (multiple-value-bind (value foundp) (gethash symbol symbol-table)
-      (if foundp
-          (values value t)
-          (context-find-label (context-parent context) symbol)))))
+    (gethash symbol symbol-table
+             (context-find-label (context-parent context) symbol))))
 
-;;; Local context, the base for building local symbol scopes and
-;;; special-purpose contexts on.
+;;; Local context, the base upon which to build local symbol scopes and
+;;; special-purpose contexts.
 
 (defclass local-context (delegate-code-vector local-symbol-table)
   ())
@@ -222,17 +220,16 @@
 
 (defun emit (bytes) (context-emit *context* bytes))
 
-(defun label (name &optional (offset 0))
-  (assert (not (null *context*)))
-  (let ((context *context*))
-    (delay name (offset)
-      (+ offset
-         (or (context-find-label context name)
-             (error 'resolvable-condition
-                    :path (format nil "Label ~A is undefined" name)))))))
+(defun label (name &key (offset 0) (context *context*))
+  (assert (not (null context)))
+  (delay name (offset)
+    (+ offset
+       (or (context-find-label context name)
+           (error 'resolvable-condition
+                  :path (format nil "Label ~A is undefined" name))))))
 
-(defun set-label (name)
-  (context-set-label *context* name)
+(defun set-label (name &optional (context *context*))
+  (context-set-label context name)
   name)
 
 ;;;; Assembler Directives

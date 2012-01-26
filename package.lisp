@@ -17,7 +17,8 @@
            #:binary-file
            #:context-emit #:context-address
            #:context-code-vector #:link
-           #:context-find-label #:context-set-label #:*context* #:basic-context
+           #:context-find-label #:context-set-label
+           #:*context* #:basic-context #:local-context
            #:emit #:label #:set-label #:advance-to #:align #:db #:dw #:rel #:*origin*
            #:opcode-cycles #:context-note-cycles #:counting-cycles #:local-context))
 
@@ -25,7 +26,7 @@
   (:use :common-lisp :6502 :6502-modes :asm6502)
   (:export #:+nmi-vector+ #:+reset-vector+ #:+irq-vector+ #:poke #:pokeword
            #:emit-delay #:timed-section
-           #:asif #:condition-to-branch #:with-label #:as/until))
+           #:asif #:condition-to-branch #:with-label #:as/until #:procedure))
 
 (defpackage :asm6502-nes
   (:use :common-lisp :asm6502 :6502 :6502-modes :asm6502-utility)
