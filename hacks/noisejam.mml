@@ -1,0 +1,91 @@
+#TITLE Noise jam
+#COMPOSER Andy Hefner
+#PROGRAMER 2007 Andy Hefner
+
+; set tempo
+ABCDE t150
+
+; noise channel
+
+@v2 = { 15 12 10 8 6 3 2 1 0 }
+@v5 = { 11 8  7  5 3 2 1 0 }
+@v6 = { 8  6  4  3 2 1 0 }
+
+@v3 = { 15 14 13 12 11 10 9 8 7 6 5 4 3 2 1 0 }
+@v4 = { 15 6 15 6 6 15 6 6 6 15 6 6 6 6 6 15 6 6 6 6 6 6 15 6 6 6 6 6 6 6 6 0 }
+
+@00 = { 0 2 }
+
+;D @v3 n0 n1 n2 n3 n4 n5 n6 n7 n8 n9 n10 n11 n12 n13 n14 n15 
+;D @v2 EP0 n0,1
+
+@EP0 = { 0 } 
+@EP1 = { 1 } 
+@EP2 = { 2 } 
+@EP3 = { 3 } 
+@EP4 = { 4 } 
+@EP5 = { 5 } 
+@EP6 = { 6 } 
+@EP7 = { 7 } 
+@EP8 = { 8 } ; crunchy and oscillating but with discernable pitch.
+@EP9 = { 9 } 
+@EP10 = { 10 } 
+@EP11 = { 11 } 
+@EP12 = { 12 } 
+@EP13 = { 13 } 
+@EP14 = { 14 } 
+@EP15 = { 15 } 
+@EP16 = { 16 } ; buzzy tone. illegal, according to the docs.
+
+D l8 o1
+
+;;;; Prologue
+
+D q8 @v4 EP0 n0 n1 n2 n3 n4 n5 n6 n7 q6 n8 n9 n10 n11 q5 n12 n13 n14 n15   ;; Swoosh!
+
+;;;; Section the First
+
+;; Begin loop:
+D [
+
+D [ q4 @v2 EP0 n13 n14 n15 EP3 n13 EP0 n14 n15 EP11 { c d e} EP0 n14 
+D   q4 @v2 EP0 n13 n14 n15 EP2 { g c g } EP0 n14 n15 EP11 { f d f} EP0 n14 
+D   q4 @v2 EP0 n13 n14 n15 EP3 n13 EP0 n14 n15 EP11 { c d e} EP0 n14 
+D   q4 @v2 q6 EP7 n13 r   q2 EP0 n15   EP3 n13 q4 EP0 n14 n15 EP11 { b f c} EP0 n13  ]2
+
+D  q2 @v2 EP0 n13 n14 n15 EP3 n13 EP0 n14 n15 EP11 { c d e} EP0 n14 
+D  q2 @v2 EP0 n13 n14 n15 EP2 { g c g } EP0 n14 n15 EP11 { f d f} EP0 n14 
+D  q2 @v2 EP0 n13 n14 n15 EP3 n13 EP0 n14 n15 EP11 { c d e} EP0 n14 
+D  q4 @v2 q6 EP2 n13 r   q2 EP0 n15   EP3 n13 q4 EP0 n14 n15 EP11 { b f c} EP0 n13
+
+D  q4 @v2 EP0 n13 EP0 n14 EP3 n15 EP1 n13 EP0 n14 n15 EP11 { n0 n0 n15 } EP0 n13
+D  q3 @v2 EP0 n13 n14 { EP11 n14 EP0 n7 } EP2 { g c g } EP0 q1 n14 q4 n15 EP11 { f d f} EP0 n14 
+D  q3 @v2 EP0 n13 n14 EP3 n15 n13 EP0 n14 n15 EP11 { c d } EP0 { n14 n0 }
+D  q8 @v2 EP3 n4 r   q2 EP0 n15   EP3 n13 q2 EP0 n14 n15 q4 EP2 { n15 n0 n0 } q2 EP0 n13
+
+;;;; Section the Second
+
+D q8 @v2 EP13 n0 n1 n2 n3 EP1 n13 EP13 n5 n6 n7 @v3 EP8 n8 n9 n10 q3 n11 n12 n13 q5 n14 n15
+D q8 @v3 EP7 n0 n1 n2 n3 n4 n5 n6 n7 q6 n8 n9 n10 n11 n12 @v2 n13 q2 n14 q4 n15
+D q6 @v2 EP6 n0 n1 n2 EP5 n2 n13 n5 EP13 n6 n7 @v3 EP8 n8 n9 n10 q3 n11 n12 n13 q2 n14 n15
+D q4 o1 @v3 EP8 n0 n1 n2 n3 n4 q8 {n0 n5} n6 { n5 n7 } q6 n8 n9 n10 n11 n12 { n0 n13 } q4 EP0 {n15 n0 n0} EP0 n15
+
+;;;; Section the Third
+
+D [q8 @v2 EP0 n13 @v6 { n13 n13 } @v2 { n11 n0} EP0 n15 n14 { n4 n0 } n8 n12
+D q8 @v2 EP0 @v4 EP11 n14 EP0 @v2 n12 EP2 { n14 n0 } EP0 n15 n14 q4 {n15 n0 n0} EP5 n8 EP0 n9
+D q8 @v2 EP0 n13 r { n3 EP8 n11} EP0 n15 n14 { n15 n0 } n8 n12
+D q8 @v2 EP0 r n12 EP2 { n14 n0 } EP0 n15 n14 q4 {n15 n0 n0} EP5 { @v6 n13 @v2 n13 } n13]2
+
+D q5 @v2 EP0 n13 n14 q8 @v2 { n11 n0} q5 EP0 n15 n14 q8 { n0 n12 } q3  n10 n12
+D q8 @v4 EP11 n14 q5 EP0 @v2 n12 EP2 n3 EP0 n15 n14 q2 {n10 EP1 n14} q8 EP2 {n8 n12 n4} q4 EP0 {n15 n0 n0} 
+D q5 @v2 EP0 n13 r q5 n11 q6 EP0 n15 n14 @q0 { n15 n0 } q8 n8 q4 n12
+D q4 @v2 EP0 r n12 q6 EP2 { n14 n0 } q8 EP0 n15 n14 q4 {n15 n0 n0} EP5 { @v6 n13 @v2 n13 } q3 EP0 n15
+
+D q4 @v2 EP0 n13 @v6 q8 { n13 n13 } @v2 { n11 n0} q2 EP0 n15 n14 EP0 q8 { n4 n0 } q4 n8 n12
+D q4 @v2 EP0 @v4 EP11 n14 EP0 @v2 n12 q8 EP2 { n14 n0 } q4 EP0 n15 n14 {n15 n0 n0} EP5 n8 EP0 n9
+D q4 @v2 EP0 n13 r { n3 EP8 n11} EP0 n15 n14 { n15 n0 } n8 EP6 n10
+D q4 @v2 EP0 r n12 EP1 { n14 n0 } EP0 n15 EP2 { n14 n14 } EP13 q7 { n3 n14 } EP6 q4 { @v6 n13 @v2 n13 } EP0 n15
+
+;; Loop twice:
+D ]2

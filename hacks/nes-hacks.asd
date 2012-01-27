@@ -6,9 +6,10 @@
   :author "Andy Hefner <ahefner@gmail.com>"
   :license "MIT-style licesnse"
   :serial t
-  :depends-on (:asm6502)
+  :depends-on (:asm6502 :ichr)
   :components ((:file "audio-test-1")
                (:file "music-demo")
                (:file "nes-hacklets")
                (:file "nes-test-1")
-               (:file "nes-test-2")))
+               (:file "nes-test-2")
+               (:file "ryden")))
