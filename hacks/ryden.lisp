@@ -1,9 +1,12 @@
-;;;; This is a very simple graphics demo. It scrolls horizontally a
-;;;; portion of some artwork by Mark Ryden, in various colors.  This
-;;;; is converted from a GIF file to an 8 KB character ROM during
-;;;; assembly. The image is large enough that we need some timed code
-;;;; to switch pattern table banks mid-frame.  It also incorporates an
-;;;; NSF file to provide some simple music.
+;;;; This is a simple graphics demo. It just scrolls horizontally a
+;;;; portion of some artwork by Mark Ryden, in various colors, with
+;;;; some sinebobs (?) on top.  The art is converted from a GIF file
+;;;; to an 8 KB character ROM during assembly. The image is large
+;;;; enough that we need some timed code to switch pattern table banks
+;;;; mid-frame.  It also incorporates an NSF file to provide some
+;;;; crude music.
+
+;;;; I'm no demo coder. Expect no 6502 wizardry here.
 
 ;;;; The music source (noisejam.mml) was compiled to an NSF externally
 ;;;; using MCK and NESASM. In theory you could swap other NSFs in
@@ -32,6 +35,10 @@
        (music-init (mem #x8080))        ; Hardcoding these..
        (music-step (mem #x8084))
        ;; Variables:
+       (sprite-table #x0300)
+       (table-x      #x0200)
+       (table-y      #x0240)
+       (countdown   (zp #x58))
        (fill-count  (zp #x91))
        (scroll-x    (zp #x92))
        (phase       (zp #x93))
@@ -74,7 +81,8 @@
     ;; Program palette.
     (ppuaddr #x3F00)
     (dolist (color '(#x3F #x2D #x3D #x30  #x3F #x05 #x15 #x25
-                     #x3F #x2D #x3D #x30  #x3F #x03 #x13 #x23))
+                     #x3F #x2D #x3D #x30  #x3F #x03 #x13 #x23
+                     #x3F #x3F #x27 #x37))
       (poke color +vram-io+))
 
     (lda (imm 64))                      ; Initialize scroll variables
@@ -84,39 +92,88 @@
     (lda (imm 160))
     (sta phase)
 
+    (jsr 'initialize-sprites)
+
     (align 256 #xEA)                    ; Pad with NOPs to next page
     (poke #b10001000 +ppu-cr1+)         ; Enable NMI
 
     (with-label mainloop
-      (jsr 'wait-for-vblank)
+      (macrolet ((repeat (times &body body)
+                   `(progn
+                      (lda countdown)
+                      (pha)
+                      (lda (imm ,(if (eql times 256)
+                                     0
+                                     times)))
+                      (sta countdown)
+                      (as/until :zero
+                        ,@(if (and (= 1 (length body))
+                                   (symbolp (first body)))
+                              `((jsr ',(first body)))
+                              body)
+                        (dec countdown))
+                      (pla)
+                      (sta countdown))))
 
-      (lda (mem +ppu-status+))          ; Reset address latch
+        ;; Show them the circle.
+        (repeat 192 linearly)
+        ;; Introduce the split, gently.
+        (repeat 3
+         (repeat 128 split-by-4)
+         (repeat 128 linearly))
+        (repeat 64 split-by-4)
+        (repeat 96 linearly)
+        ;; Time to change the effect.
+        (repeat 256 spin-apart)
+        (repeat 96 linearly)
+        ;; A little more intense..
+        (repeat 5
+         (repeat 24 split-by-4)
+         (repeat 96 linearly))
+        (repeat 88 split-by-4)
+        ;; Slow down..
+        (repeat 256
+          (jsr 'split-by-4)
+          (jsr 'spin-apart))
+        ;; Rest and repeat. Come a little unglued.
+        (repeat 256 spin-apart)
+        (repeat 253 spin-apart)
+      (jmp (mem 'mainloop)))))
 
-      (ldx phase)                       ; 'phase' steps through rate-pattern
-      (inx)
-      (stx phase)
-      (lda scroll-x)                    ; Scroll horizontally..
-      (clc)                             ; Update scroll-x by rate-pattern
-      (adc (abx 'rate-pattern))         ; Add. Use the carry-out below!
-      (sta scroll-x)
-      (sta (mem +vram-scroll+))         ; Set scroll registers
-      (lda ntaddr)                      ; Carry into ntaddr
-      (adc (imm 0))                     ; ** Carry in from ADC above. **
-      (anda (imm 1))                    ; Carry toggles $2000/$2400
-      (sta ntaddr)
-      (ora (imm #b10001000))            ; NMI on, BG Pattern table $0000
-      (sta (mem +ppu-cr1+))
-      (poke #b00001110 +ppu-cr2+)       ; BG on, sprites off.
-      (lda (imm 0))
-      (sta (mem +vram-scroll+))
-      ;; Switch pattern tables mid-frame:
-      (emit-delay (+ (* 114 146) 178))
-      (lda ntaddr)
-      (ora (imm #b10011000))            ; NMI on, BG Pattern table $1000
-      (sta (mem +ppu-cr1+))
+  (procedure framestep
+    (jsr 'update-sprites)
+    (jsr 'wait-for-vblank)
 
-      (jsr music-step)
-      (jmp (mem 'mainloop))))
+    (lda (mem +ppu-status+))          ; Reset PPU address latch.
+    (lda (imm (msb sprite-table)))    ; Sprite DMA transfer.
+    (sta (mem +sprite-dma+))
+    (lda (mem +ppu-status+))          ; Reset address latch, to be safe.
+    (ldx phase)                       ; 'phase' steps through rate-pattern
+    (inx)
+    (stx phase)
+    (lda scroll-x)                    ; Scroll horizontally..
+    (clc)                             ; Update scroll-x by rate-pattern
+    (adc (abx 'rate-pattern))         ; Add. Use the carry-out below!
+    (sta scroll-x)
+    (sta (mem +vram-scroll+))         ; Set scroll registers
+    (lda ntaddr)                      ; Carry into ntaddr
+    (adc (imm 0))                     ; ** Carry in from ADC above. **
+    (anda (imm 1))                    ; Carry toggles $2000/$2400
+    (sta ntaddr)
+    (ora (imm #b10001000))            ; NMI on, BG Pattern table $0000
+    (sta (mem +ppu-cr1+))
+    (poke #b00011110 +ppu-cr2+)       ; BG and sprites on.
+    (lda (imm 0))
+    (sta (mem +vram-scroll+))
+    ;; Switch pattern tables mid-frame:
+    (emit-delay (+ (* 114 143) -15))
+    (lda ntaddr)
+    (ora (imm #b10011000))            ; NMI on, BG Pattern table $1000
+    (sta (mem +ppu-cr1+))
+
+    (jsr music-step)
+
+    (rts))
 
   ;; This table controls the scrolling.
   (with-label rate-pattern
@@ -157,6 +214,99 @@
       (dotimes (x 4) (sta (mem +vram-io+))))
     (rts))
 
+  (procedure initialize-sprites
+    ;; Initialize OAM mirror.
+    (ldx (imm 0))
+    (as/until :zero
+      (poke 96 (abx sprite-table))      ; Y coordinate
+      (inx)
+      (txa)                             ; Alternate character #s
+      (lsr)
+      (lsr)                             ;
+      (ora (imm #xFE))
+      (sta (abx sprite-table))          ; Sprite index
+      (inx)
+      (poke 0 (abx sprite-table))       ; Attirubtes
+      (inx)
+      (poke 64 (abx sprite-table))      ; X coordinate
+      (inx))
+    ;; Initialize X/Y phase variables
+    (ldx (imm 63))
+    (lda (imm 0))
+    (as/until :negative
+      (sta (abx table-x))
+      (sta (abx table-y))
+      (clc)
+      (adc (imm 4))
+      (dex))
+    (rts))
+
+  (procedure linearly
+    (jsr 'framestep)
+    (ldx (imm 63))
+    (as/until :negative
+      (inc (abx table-x))
+      (inc (abx table-y))
+      (dex))
+    (rts))
+
+  (procedure spin-apart
+    (jsr 'framestep)
+    (ldx (imm 63))
+    (as/until :negative
+      (inc (abx table-x))
+      (txa)
+      (anda (imm 1))
+      (clc)
+      (adc (abx table-x))
+      (sta (abx table-x))
+      (dex))
+    (rts))
+
+  (procedure split-by-4
+    (jsr 'framestep)
+    (ldx (imm 63))
+    (as/until :negative
+      (inc (abx table-y))
+      (txa)
+      (anda (imm 16))
+      (lsr)
+      (lsr)
+      (lsr)
+      (clc)
+      (adc (abx table-x))
+      (sta (abx table-x))
+      (dex))
+    (rts))
+
+  (procedure update-sprites
+    (brk) (db 1)
+    (ldx (imm 63))
+    (as/until :negative
+      (ldy (abx table-x))               ; Push sin[table_x[X]]
+      (lda (aby 'sine-table))
+      (pha)
+
+      (lda (abx table-y))               ; Push sin[table_x[X]+64]
+      (clc)
+      (adc (imm 64))
+      (tay)
+      (lda (aby 'sine-table))
+      (pha)
+
+      (txa)                             ; A = X * 4
+      (asl)
+      (asl)
+      (tay)                             ; Y = X * 4
+      (pla)                             ; Pop cosine
+      (clc)
+      (adc (imm -10))                   ; Offset Y coordinate
+      (sta (aby sprite-table))          ; Store in sprite Y coordinate
+      (pla)                             ; Pop sine
+      (sta (aby (+ 3 sprite-table)))    ; Store in sprite X coordinate
+      (dex))                            ; Decrememnt sprite index
+    (rts))
+
   (procedure wait-for-vblank
     (as/until :not-zero (lda vblank-flag))
     (lda (imm 0))
@@ -168,6 +318,12 @@
   (procedure vblank-handler
     (inc vblank-flag)
     (rti))
+
+  (align 256)
+  (with-label sine-table
+    (loop for i from 0 below 256
+          do (db (round (+ 124 (* 99 (sin (* 2 pi i 1/256))))))))
+
 
   ;; Interrupt vectors:
   (advance-to +nmi-vector+)
