@@ -150,16 +150,17 @@
                  :initform (make-array 0 :adjustable t :fill-pointer t))
    (address :initarg :address :accessor context-address :initform #x8000)))
 
-(defmethod context-emit ((context code-vector) vector)
-  (when (> (+ (context-address context) (length vector)) #x10000)
+(defmethod context-emit ((context code-vector) bytes)
+  (when (> (+ (context-address context) (length bytes)) #x10000)
     (warn "Context emit of $~X bytes at ~X will overflow address space"
           (context-address context)
-          (length vector)))
-  (loop for x across vector do
-        (unless (typep x '(or (integer 0 255) promise))
-          (error "Attempt to emit garbage (~A) at ~X" x (context-address context)))
-        (vector-push-extend x (context-code-vector context)))
-  (incf (context-address context) (length vector)))
+          (length bytes)))
+  (map nil (lambda (x)
+             (unless (typep x '(or (integer 0 255) promise))
+               (error "Attempt to emit garbage (~A) at ~X" x (context-address context)))
+             (vector-push-extend x (context-code-vector context)))
+       bytes)
+  (incf (context-address context) (length bytes)))
 
 (defclass basic-context (code-vector symbol-table) ())
 
