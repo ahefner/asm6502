@@ -30,6 +30,8 @@
 
 (let* ((global (make-instance 'basic-context :address #x8000))
        (*context* global)
+       (num-wavy-lines (* 3 26))        ; Must be multiple of 3 !
+       (log2-wavy-period 6)
        ;; Music:
        (music (binary-file (merge-pathnames "noisejam.nsf" *path*)))
        (music-init (mem #x8080))        ; Hardcoding these..
@@ -39,10 +41,15 @@
        (table-x      #x0200)
        (table-y      #x0240)
        (countdown   (zp #x58))
+       (wave        (zp #x59))
+       (wt-lsb      (zp #x60))
+       (wt-msb      (zp #x61))
+       (wt-get      (indi #x60))
        (fill-count  (zp #x91))
        (scroll-x    (zp #x92))
        (phase       (zp #x93))
        (ntaddr      (zp #x95))
+       (top-ntaddr  (zp #x97))
        (vblank-flag (zp #x96)))         ; Set by NMI handler.
 
   (emit music)
@@ -80,8 +87,8 @@
 
     ;; Program palette.
     (ppuaddr #x3F00)
-    (dolist (color '(#x3F #x2D #x3D #x30  #x3F #x05 #x15 #x25
-                     #x3F #x2D #x3D #x30  #x3F #x03 #x13 #x23
+    (dolist (color '(#x3F #x2D #x3D #x30  #x3F #x03 #x13 #x23
+                     #x3F #x2D #x3D #x30  #x3F #x05 #x15 #x25
                      #x3F #x3F #x27 #x37))
       (poke color +vram-io+))
 
@@ -89,10 +96,13 @@
     (sta scroll-x)
     (lda (imm 0))
     (sta ntaddr)
+    (sta wave)
     (lda (imm 160))
     (sta phase)
 
     (jsr 'initialize-sprites)
+
+    (jsr 'update-sprites)
 
     (align 256 #xEA)                    ; Pad with NOPs to next page
     (poke #b10001000 +ppu-cr1+)         ; Enable NMI
@@ -121,9 +131,17 @@
         (repeat 3
          (repeat 128 split-by-4)
          (repeat 128 linearly))
+        ;; Compare/contrast:
+        (repeat 2
+         (repeat 128
+                 (jsr 'spin-apart)
+                 (jsr 'linearly))
+         (repeat 128 linearly)
+         (repeat 128 split-by-4)
+         (repeat 128 linearly))
         (repeat 64 split-by-4)
         (repeat 96 linearly)
-        ;; Time to change the effect.
+        ;; Change it up.
         (repeat 256 spin-apart)
         (repeat 96 linearly)
         ;; A little more intense..
@@ -138,15 +156,16 @@
         ;; Rest and repeat. Come a little unglued.
         (repeat 256 spin-apart)
         (repeat 253 spin-apart)
+
       (jmp (mem 'mainloop)))))
 
+  (align 256)
   (procedure framestep
-    (jsr 'update-sprites)
     (jsr 'wait-for-vblank)
-
     (lda (mem +ppu-status+))          ; Reset PPU address latch.
     (lda (imm (msb sprite-table)))    ; Sprite DMA transfer.
     (sta (mem +sprite-dma+))
+
     (lda (mem +ppu-status+))          ; Reset address latch, to be safe.
     (ldx phase)                       ; 'phase' steps through rate-pattern
     (inx)
@@ -155,28 +174,108 @@
     (clc)                             ; Update scroll-x by rate-pattern
     (adc (abx 'rate-pattern))         ; Add. Use the carry-out below!
     (sta scroll-x)
-    (sta (mem +vram-scroll+))         ; Set scroll registers
     (lda ntaddr)                      ; Carry into ntaddr
     (adc (imm 0))                     ; ** Carry in from ADC above. **
-    (anda (imm 1))                    ; Carry toggles $2000/$2400
+    (anda (imm #b00000001))           ; Carry toggles $2000/$2400
+    ;; (*) Subtle: I had to bum an instruction out of the scanline kernel, so
+    ;; I store this with bit 4 inverted, as the bottom half of the screen
+    ;; requires.
+    (eor (imm #b10011000))            ; NMI on, invert BG Pattern address! (*)
     (sta ntaddr)
-    (ora (imm #b10001000))            ; NMI on, BG Pattern table $0000
+
+    ;; This got a little messy. Arithmetic for the bottom half of the screen
+    ;; is biased by 128, because it's easier than screwing with the overflow
+    ;; flag (the wave offsets are signed). Must adjust the top half to match.
+    ;; There's also the issue of the gap between the screen split and the wave
+    ;; effect, which also needs the correct value from here ("top-ntaddr").
+    (lda scroll-x)
+    (clc)
+    (adc (imm 128))
+    (sta (mem +vram-scroll+))
+    (lda ntaddr)                        ; Carry into NT address.
+    (adc (imm 0))                       ; (okay if it carries again)
+    (eor (imm #b00010000))              ; Flip pattern table address.
+    (sta top-ntaddr)                    ; Reuse this after the split.
     (sta (mem +ppu-cr1+))
+
     (poke #b00011110 +ppu-cr2+)       ; BG and sprites on.
     (lda (imm 0))
     (sta (mem +vram-scroll+))
+
+    (jsr 'update-sprites)
+
     ;; Switch pattern tables mid-frame:
-    (emit-delay (+ (* 114 143) -15))
-    (lda ntaddr)
-    (ora (imm #b10011000))            ; NMI on, BG Pattern table $1000
+    (emit-delay (+ (* 114 107) 40))
+    (lda top-ntaddr)
+    (eor (imm #b10010000))            ; Invert pattern bank.
     (sta (mem +ppu-cr1+))
 
-    (jsr music-step)
+    ;; In theory, the music player will run here.
+    (emit-delay (round (* 113.66 14)))
+
+    ;; Wavy effect
+    (flet ((kernel ()
+             (poke #b00011110 +ppu-cr2+)
+             (clc)
+             (lda wt-get)               ; Get wave offset
+             (adc scroll-x)             ; Add to BG scroll position
+             (sta (mem +vram-scroll+))
+             (lda (imm 0))
+             (sta (mem +vram-scroll+))
+             (lda ntaddr)               ; Carry in. Effectively, scroll-x and
+             (adc (imm 0))              ; ntaddr.0 form a 9-bit field.
+             (sta (mem +ppu-cr1+))
+             (poke #b00011110 +ppu-cr2+)))
+
+      ;; Setup for wave effect.. load table pointer into zero page.
+      (lda (imm (lsb (label 'wave-offsets))))
+      (sta wt-lsb)
+      (ldx wave)                        ; Increment wave counter..
+      (inx)
+      (stx wave)
+      (txa)
+      (anda (imm (1- (expt 2 log2-wavy-period)))) ; Modulo cycle length..
+      (clc)
+      (adc (imm (msb (label 'wave-offsets))))  ; Step MSB each frame..
+      (sta wt-msb)
+
+      (emit-delay 48)                   ; Realign with hblank
+
+      (ldy (imm num-wavy-lines))
+
+      (loop repeat (/ num-wavy-lines 3) do
+            (print (list :kernel-cycles (counting-cycles (kernel) (dey))))
+            (loop repeat 14 do (inc (zp 0)))
+            (print (list :kernel-cycles (counting-cycles (kernel) (dey))))
+            (nop)
+            (loop repeat 14 do (inc (zp 0)))
+            (print (list :kernel-cycles (counting-cycles (kernel) (dey))))
+            (loop repeat 14 do (inc (zp 0))))
+
+      ;; This version works okay, but unrolling it as above works better.
+      #+(or)
+      (with-label loop
+        (timed-section (114) (kernel) (dey))
+        (timed-section (114) (kernel) (dey))
+        (timed-section (108) (kernel))
+        ;; Fun fact: timed-section is a piece of crap.
+        (cmp (zp 0))                    ; Burn 3 cycles.
+
+        (dey)
+        (bne 'loop)))
+
+    ;; Shut the screen off. Need a few extra scanlines here to update
+    ;; the sprite tables, and if I didn't shut it off, you'd notice
+    ;; the background stopped waving.
+    (loop repeat 10 do (nop))           ; Realign with hblank.. again.
+    (poke 0 +ppu-cr2+)
 
     (rts))
 
   ;; This table controls the scrolling.
   (with-label rate-pattern
+;    (loop repeat 256 do (db 0))
+
     (let* ((tr '(1 0 1 0 1 0 1 0 0 1 0 0 1 0 0 0 1))
            (pattern (subseq
                      (append (loop repeat (- 128 (reduce '+ tr))
@@ -245,42 +344,62 @@
     (jsr 'framestep)
     (ldx (imm 63))
     (as/until :negative
-      (inc (abx table-x))
-      (inc (abx table-y))
-      (dex))
+      (print
+       (counting-cycles
+        (inc (abx table-x))
+        (inc (abx table-y))
+        (dotimes (i 7) (nop))
+        (dex))))
     (rts))
 
   (procedure spin-apart
     (jsr 'framestep)
     (ldx (imm 63))
     (as/until :negative
-      (inc (abx table-x))
-      (txa)
-      (anda (imm 1))
-      (clc)
-      (adc (abx table-x))
-      (sta (abx table-x))
-      (dex))
+      (print
+       (counting-cycles
+        (inc (abx table-x))
+        (txa)
+        (anda (imm 1))
+        (clc)
+        (adc (abx table-x))
+        (sta (abx table-x))
+        (dotimes (i 3) (nop))
+        (dex))))
     (rts))
 
   (procedure split-by-4
     (jsr 'framestep)
     (ldx (imm 63))
     (as/until :negative
-      (inc (abx table-y))
-      (txa)
-      (anda (imm 16))
-      (lsr)
-      (lsr)
-      (lsr)
-      (clc)
-      (adc (abx table-x))
-      (sta (abx table-x))
-      (dex))
+      (print
+       (counting-cycles
+         (inc (abx table-y))
+         (txa)
+         (anda (imm 16))
+         (lsr)
+         (lsr)
+         (lsr)
+         (clc)
+         (adc (abx table-x))
+         (sta (abx table-x))
+         (dex))))
     (rts))
 
+  (procedure wait-for-vblank
+    (as/until :not-zero (lda vblank-flag))
+    (lda (imm 0))
+    (sta vblank-flag)
+    (rts))
+
+  (procedure brk-handler (rti))
+
+  (procedure vblank-handler
+    (inc vblank-flag)
+    (rti))
+
+  (align 256)
   (procedure update-sprites
-    (brk) (db 1)
     (ldx (imm 63))
     (as/until :negative
       (ldy (abx table-x))               ; Push sin[table_x[X]]
@@ -307,23 +426,24 @@
       (dex))                            ; Decrememnt sprite index
     (rts))
 
-  (procedure wait-for-vblank
-    (as/until :not-zero (lda vblank-flag))
-    (lda (imm 0))
-    (sta vblank-flag)
-    (rts))
-
-  (procedure brk-handler (rti))
-
-  (procedure vblank-handler
-    (inc vblank-flag)
-    (rti))
-
   (align 256)
   (with-label sine-table
     (loop for i from 0 below 256
           do (db (round (+ 124 (* 99 (sin (* 2 pi i 1/256))))))))
 
+  (with-label wave-offsets
+    (loop with nframes = (expt 2 log2-wavy-period)
+          for frame from (1- nframes) downto 0 do
+      (align 256)
+      (emit
+       ;; The wave loop counts from num-wavy-lines to 1. So, one extra here.
+       (loop for line from num-wavy-lines downto 0
+             with amp = 3
+             collect (mod (round ( + 128 ; bias to fix carry
+                                     (* amp (/ line 80)
+                                        (sin (* 2 pi (/ (+ (* 0.3 (expt line 1.54)) frame)
+                                                        nframes))))))
+                          256)))))
 
   ;; Interrupt vectors:
   (advance-to +nmi-vector+)
