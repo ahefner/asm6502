@@ -21,10 +21,10 @@
 ;;;; emulator which I've yet to fix, where the frame timing is
 ;;;; apparently off by one scanline. Oops.
 
-(defpackage :ryden-demo
+(defpackage :dollhouse-demo
   (:use :common-lisp :6502 :6502-modes :asm6502 :asm6502-utility :asm6502-nes))
 
-(in-package :ryden-demo)
+(in-package :dollhouse-demo)
 
 (defvar *path* #.*compile-file-pathname*)
 
@@ -452,7 +452,7 @@
   (dw (label 'brk-handler))
 
   ;; Create output file:
-  (write-ines "/tmp/ryden.nes"
+  (write-ines "/tmp/dollhouse.nes"
               (link global)
               :mirror-mode :vertical
               :chr (ichr:encode-chr
