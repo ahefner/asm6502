@@ -208,7 +208,7 @@
     (jsr 'update-sprites)
 
     ;; Switch pattern tables mid-frame:
-    (emit-delay (+ (* 114 107) 32))
+    (emit-delay (+ (* 114 107) 30))
     (lda top-ntaddr)
     (eor (imm #b10010000))            ; Invert pattern bank.
     (sta (mem +ppu-cr1+))
@@ -242,7 +242,7 @@
       (adc (imm (msb (label 'wave-offsets))))  ; Step MSB each frame..
       (sta wt-msb)
 
-      (emit-delay 48)                   ; Realign with hblank
+      (emit-delay 54)                   ; Realign with hblank
 
       (ldy (imm num-wavy-lines))
 
