@@ -1,18 +1,12 @@
-;;;; This is a simple graphics demo. It just scrolls horizontally a
-;;;; portion of some artwork by Mark Ryden, in various colors, with
-;;;; some sinebobs (?) on top.  The art is converted from a GIF file
-;;;; to an 8 KB character ROM during assembly. The image is large
-;;;; enough that we need some timed code to switch pattern table banks
-;;;; mid-frame.  It also incorporates an NSF file to provide some
-;;;; crude music.
+;;;; This is a graphics demo. It horizontally scrolls a portion of
+;;;; some artwork by Mark Ryden, in various colors, with some sinebobs
+;;;; (?) and a wavy raster effect on top.  The art is converted from a
+;;;; GIF file to an 8 KB character ROM during assembly. The image is
+;;;; large enough that we need some timed code to switch pattern table
+;;;; banks mid-frame.  It also incorporates an NSF file to provide
+;;;; some crude music.
 
 ;;;; I'm no demo coder. Expect no 6502 wizardry here.
-
-;;;; The music source (noisejam.mml) was compiled to an NSF externally
-;;;; using MCK and NESASM. In theory you could swap other NSFs in
-;;;; place of this one, provided you fix the player addresses
-;;;; (music-init and music-step) to match the file header, and no
-;;;; variables clash in the zero page.
 
 ;;;; It targets a basic NROM board (32KB program, 8KB character). I
 ;;;; haven't had a chance to test on real hardware yet.
@@ -125,7 +119,9 @@
                       (pla)
                       (sta countdown)))
                  (scroll-panels ()
-                   `(poke 0 phase)))
+                   `(poke 0 phase))
+                 (stop-panels ()
+                   `(poke 159 phase)))
 
         ;; Show them the circle.
         (repeat 192 linearly)
@@ -156,8 +152,10 @@
         (repeat 88 split-by-4)
         ;; Slow down..
         (repeat 256
+          (scroll-panels)
           (jsr 'split-by-4)
           (jsr 'spin-apart))
+        (stop-panels)
         ;; Rest and repeat. Come a little unglued.
         (repeat 256 spin-apart)
         (repeat 253 spin-apart)
