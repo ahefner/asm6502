@@ -97,7 +97,7 @@
     (lda (imm 0))
     (sta ntaddr)
     (sta wave)
-    (lda (imm 160))
+    (lda (imm 159))
     (sta phase)
 
     (jsr 'initialize-sprites)
@@ -123,20 +123,25 @@
                               body)
                         (dec countdown))
                       (pla)
-                      (sta countdown))))
+                      (sta countdown)))
+                 (scroll-panels ()
+                   `(poke 0 phase)))
 
         ;; Show them the circle.
         (repeat 192 linearly)
         ;; Introduce the split, gently.
         (repeat 3
-         (repeat 128 split-by-4)
-         (repeat 128 linearly))
+          (scroll-panels)
+          (repeat 128 split-by-4)
+          (repeat 128 linearly))
         ;; Compare/contrast:
         (repeat 2
+         (scroll-panels)
          (repeat 128
-                 (jsr 'spin-apart)
-                 (jsr 'linearly))
+           (jsr 'spin-apart)
+           (jsr 'linearly))
          (repeat 128 linearly)
+         (scroll-panels)
          (repeat 128 split-by-4)
          (repeat 128 linearly))
         (repeat 64 split-by-4)
@@ -168,12 +173,12 @@
 
     (lda (mem +ppu-status+))          ; Reset address latch, to be safe.
     (ldx phase)                       ; 'phase' steps through rate-pattern
-    (inx)
-    (stx phase)
     (lda scroll-x)                    ; Scroll horizontally..
     (clc)                             ; Update scroll-x by rate-pattern
     (adc (abx 'rate-pattern))         ; Add. Use the carry-out below!
     (sta scroll-x)
+    (lda (abx 'rate-transition))      ; Update phase via transition function.
+    (sta phase)
     (lda ntaddr)                      ; Carry into ntaddr
     (adc (imm 0))                     ; ** Carry in from ADC above. **
     (anda (imm #b00000001))           ; Carry toggles $2000/$2400
@@ -205,7 +210,7 @@
     (jsr 'update-sprites)
 
     ;; Switch pattern tables mid-frame:
-    (emit-delay (+ (* 114 107) 40))
+    (emit-delay (+ (* 114 107) 32))
     (lda top-ntaddr)
     (eor (imm #b10010000))            ; Invert pattern bank.
     (sta (mem +ppu-cr1+))
@@ -286,6 +291,9 @@
       (assert (= 256 (length pattern)))
       (assert (= 128 (reduce #'+ pattern)))
       (map nil 'db pattern)))
+  (with-label rate-transition
+    (loop for i from 0 below 160 do (db (1+ i)))
+    (db 160))
 
   (procedure fill-nametable
     (lda (imm 30))
