@@ -455,7 +455,7 @@
              with amp = 2
              collect (mod (round ( + 128 ; bias to fix carry
                                      (* amp (/ (expt line 1.1) 80)
-                                        (sin (* 2 pi (/ (+ (* 0.14 (expt line 1.54)) frame)
+                                        (sin (* 2 pi (/ (+ (* 0.07 (expt line 1.75)) frame)
                                                         nframes))))))
                           256)))))
 
