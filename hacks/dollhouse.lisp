@@ -25,11 +25,8 @@
 (let* ((global (make-instance 'basic-context :address #x8000))
        (*context* global)
        (num-wavy-lines (* 3 26))        ; Must be multiple of 3 !
-       (log2-wavy-period 6)
-       ;; Music:
-       (music (binary-file (merge-pathnames "noisejam.nsf" *path*)))
-       (music-init (mem #x8080))        ; Hardcoding these..
-       (music-step (mem #x8084))
+       (log2-wavy-period 5)
+
        ;; Variables:
        (sprite-table #x0300)
        (table-x      #x0200)
@@ -46,8 +43,6 @@
        (top-ntaddr  (zp #x97))
        (vblank-flag (zp #x96)))         ; Set by NMI handler.
 
-  (emit music)
-
   (procedure reset
     (sei)
     (cld)
@@ -56,9 +51,7 @@
     (txs)
 
     ;; Initialize music player.
-    ;;(lda (imm 0))                       ; song 0
-    ;;(ldx (imm 0))                       ; NTSC
-    ;;(jsr music-init)
+    ;;  ...or don't.
 
     ;; Init sound hardware
     (poke 0 #x4015)                     ; Silence all channels
@@ -222,7 +215,7 @@
 
     ;; Wavy effect
     (flet ((kernel ()
-             (poke #b00011110 +ppu-cr2+)
+             (poke #b11111110 +ppu-cr2+)
              (clc)
              (lda wt-get)               ; Get wave offset
              (adc scroll-x)             ; Add to BG scroll position
@@ -235,29 +228,38 @@
              (poke #b00011110 +ppu-cr2+)))
 
       ;; Setup for wave effect.. load table pointer into zero page.
-      (lda (imm (lsb (label 'wave-offsets))))
-      (sta wt-lsb)
-      (ldx wave)                        ; Increment wave counter..
-      (inx)
-      (stx wave)
-      (txa)
+      (inc wave)                        ; Increment wave phase
+      (lda wave)
       (anda (imm (1- (expt 2 log2-wavy-period)))) ; Modulo cycle length..
+      (lsr)
       (clc)
-      (adc (imm (msb (label 'wave-offsets))))  ; Step MSB each frame..
+      (adc (imm (msb (label 'wave-offsets)))) ; Calculate table MSB
       (sta wt-msb)
+      (lda wave)
+      (lsr)
+      (lda (imm 0))                     ; Rotate into MSB of LSB (...)
+      (ror)                             ; (each table is 128 bytes)
+      (adc (imm (lsb (label 'wave-offsets))))
+      (sta wt-lsb)
 
-      (emit-delay 54)                   ; Realign with hblank
+      (emit-delay 45)                   ; Realign with hblank
 
       (ldy (imm num-wavy-lines))
 
-      (loop repeat (/ num-wavy-lines 3) do
-            (print (list :kernel-cycles (counting-cycles (kernel) (dey))))
-            (loop repeat 14 do (inc (zp 0)))
-            (print (list :kernel-cycles (counting-cycles (kernel) (dey))))
-            (nop)
-            (loop repeat 14 do (inc (zp 0)))
-            (print (list :kernel-cycles (counting-cycles (kernel) (dey))))
-            (loop repeat 14 do (inc (zp 0))))
+      (macrolet ((reporting-timing (&body body)
+                   `(print (list :kernel-cycles
+                                 (counting-cycles ,@body)))))
+        (loop repeat (/ num-wavy-lines 3) do
+              (reporting-timing (kernel) (dey))
+              ;;(print (list :kernel-cycles (counting-cycles (kernel) (dey))))
+              (loop repeat 14 do (inc (zp 0)))
+              (reporting-timing (kernel) (dey))
+              ;;(print (list :kernel-cycles (counting-cycles (kernel) (dey))))
+              (nop)
+              (loop repeat 14 do (inc (zp 0)))
+              (reporting-timing (kernel) (dey))
+              ;;(print (list :kernel-cycles (counting-cycles (kernel) (dey))))
+              (loop repeat 14 do (inc (zp 0)))))
 
       ;; This version works okay, but unrolling it as above works better.
       #+(or)
@@ -316,11 +318,12 @@
         (dey))
       (dec fill-count)))
 
-  ;; Wasteful, but the ROM is mostly empty anyway.
   (procedure fill-attributes
-    (dotimes (y 8)
+    (ldx (imm 8))
+    (as/until :zero
       (dotimes (x 4) (sty (mem +vram-io+)))
-      (dotimes (x 4) (sta (mem +vram-io+))))
+      (dotimes (x 4) (sta (mem +vram-io+)))
+      (dex))
     (rts))
 
   (procedure initialize-sprites
@@ -441,19 +444,22 @@
     (loop for i from 0 below 256
           do (db (round (+ 124 (* 99 (sin (* 2 pi i 1/256))))))))
 
+  (align 256)
   (with-label wave-offsets
     (loop with nframes = (expt 2 log2-wavy-period)
           for frame from (1- nframes) downto 0 do
-      (align 256)
+      (align 128)
       (emit
        ;; The wave loop counts from num-wavy-lines to 1. So, one extra here.
        (loop for line from num-wavy-lines downto 0
-             with amp = 3
+             with amp = 2
              collect (mod (round ( + 128 ; bias to fix carry
-                                     (* amp (/ line 80)
-                                        (sin (* 2 pi (/ (+ (* 0.3 (expt line 1.54)) frame)
+                                     (* amp (/ (expt line 1.1) 80)
+                                        (sin (* 2 pi (/ (+ (* 0.14 (expt line 1.54)) frame)
                                                         nframes))))))
                           256)))))
+
+  (format t "~&Empty space begins at ~X~%" *origin*)
 
   ;; Interrupt vectors:
   (advance-to +nmi-vector+)
