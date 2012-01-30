@@ -56,9 +56,13 @@
     (txs)
 
     ;; Initialize music player.
-    (lda (imm 0))                       ; song 0
-    (ldx (imm 0))                       ; NTSC
-    (jsr music-init)
+    ;;(lda (imm 0))                       ; song 0
+    ;;(ldx (imm 0))                       ; NTSC
+    ;;(jsr music-init)
+
+    ;; Init sound hardware
+    (poke 0 #x4015)                     ; Silence all channels
+    (poke #x40 #x4017)                  ; Disable IRQ !!
 
     (as/until :negative (bita (mem +ppu-status+))) ; PPU warmup interval
     (as/until :negative (bita (mem +ppu-status+))) ; (two frames)
