@@ -42,25 +42,25 @@
   (first
    (first
     (sort
-     (mapcar (lambda (pair) (list (first pair) (- (second pair) length)))
-             '((0 #x0A)  (1 #xFE)
-               (2 #x14)  (3 #x02)
-               (4 #x28)  (5 #x04)
-               (6 #x50)  (7 #x06)
-               (8 #xA0)  (9 #x08)
-               (10 #x3C) (11 #x0A)
-               (12 #x0E) (13 #x0C)
-               (14 #x1A) (15 #x0E)
-               (16 #x0C) (17 #x10)
-               (18 #x18) (19 #x12)
-               (20 #x30) (21 #x14)
-               (22 #x60) (23 #x16)
-               (24 #xC0) (25 #x18)
-               (26 #x48) (27 #x1A)
-               (28 #x10) (29 #x1C)
-               (30 #x20) (31 #x1E)))
+     (copy-list
+      '((0 #x0A)  (1 #xFE)
+        (2 #x14)  (3 #x02)
+        (4 #x28)  (5 #x04)
+        (6 #x50)  (7 #x06)
+        (8 #xA0)  (9 #x08)
+        (10 #x3C) (11 #x0A)
+        (12 #x0E) (13 #x0C)
+        (14 #x1A) (15 #x0E)
+        (16 #x0C) (17 #x10)
+        (18 #x18) (19 #x12)
+        (20 #x30) (21 #x14)
+        (22 #x60) (23 #x16)
+        (24 #xC0) (25 #x18)
+        (26 #x48) (27 #x1A)
+        (28 #x10) (29 #x1C)
+        (30 #x20) (31 #x1E)))
      #'<
-     :key (lambda (p) (abs (second p)))))))
+     :key (lambda (p) (abs (- (second p) length)))))))
 
 (defun cfg (channel &key (duty 2) (vol 15) (env t) (loop nil))
   (list
@@ -102,6 +102,9 @@
 (defun para (&rest args)
   (apply #'mapcar #'append (mapcar (lambda (x) (pad-list x nil (reduce #'max args :key #'length))) args)))
 
+(defun measure (&rest args)
+  (segment 128 (apply 'para args)))
+
 ;;; These look familiar:
 (defun seq (&rest args)
   (apply #'concatenate 'list args))
@@ -128,9 +131,107 @@
         (tri 1 (* pitch 2/3))
         (tri 1 (* pitch 1/2)))))
 
+(defun bthump (length pitch)
+  (segment length
+    (para (thump length pitch)
+          #+NIL
+          (note 1 8 (* 4.0 pitch) :d 6 :cfg '(:duty 1 :vol 12 :loop nil))
+          (seq
+           (note 0 1 (* 2.0 pitch) :cfg '(:duty 2 :vol 2 :loop nil))
+           (note 0 1 (* 4.0 pitch) :cfg '(:duty 2 :vol 2 :loop nil))
+           (note 0 1 (* 2.0 pitch) :cfg '(:duty 2 :vol 2 :loop nil))))))
+
+(defun shaker (length volume)
+  (assert (>= length 2))
+  (segment
+   length
+   (seq
+    (noise 1 1 1 :env nil :loop t :vol volume)
+    (noise 1 1 1 :env nil :vol 0))))
+
 (defun rst (length) (segment length nil))
 
+(defun eltmod (i seq) (elt seq (mod i (length seq))))
+(defun clamp (x min max) (max (min x max) min))
 
+(defun arp-test ()
+  (apply 'seq
+         (loop for i below 128
+               as freq = (et (eltmod i '(0 3 5 -2 -4)) 12)
+               as vol = (clamp (ash (- 48 i) -2)
+                               0
+                               15)
+               as duty = (mod (ash i -2) 4)
+               collect
+               (para (note 0 3 freq :cfg (list :duty duty :env nil :loop t :vol vol))
+                     (note 1 3 (* freq 1.01) :cfg (list :duty duty :env nil :loop t :vol vol))))))
+
+(defun arp-test-2 ()
+  (para
+   (apply 'seq
+          (loop for i below 128
+                as time = (* i 3)
+                as freq = (et (eltmod i '(0 3 5 -2 -4)) 12)
+                as vol = (clamp (- 15 (ash time -3))
+                                0
+                                15)
+                as duty = (mod (ash time -2) 4)
+                collect
+                (note 0 3 freq :cfg (list :duty duty :env nil :loop t :vol vol))))
+   (apply 'seq
+          (loop for i below 128
+                as time = (* i 4)
+                as freq = (et (eltmod i '(0 2 5 -2 -4 7)) 12)
+                as vol = (clamp (- 15 (ash time -3))
+                                0
+                                15)
+                as duty = (mod (ash time -2) 4)
+                collect
+                (note 1 4 freq :cfg (list :duty duty :env nil :loop t :vol vol))))))
+
+(defun silence-channel (channel)
+  (ecase channel
+    (0 (note 0 1 1 :d 0 :cfg '(:vol 0 :loop t :env nil)))
+    (1 (note 1 1 1 :d 0 :cfg '(:vol 0 :loop t :env nil)))))
+
+(defun volramp (&optional (start 15) (rate -1/10))
+  (lambda (time)
+   (clamp (round (+ start (* time rate)))
+          0
+          15)))
+
+(defun shimmer ()
+  (lambda (time) (mod (ash time -4) 4)))
+
+(defun arpeggio (channel length chord &key
+                 (rate 3)
+                 (d rate)
+                 (env nil)
+                 (loop t)
+                 (mute nil)
+                 (volume (volramp))
+                 (duty (shimmer)))
+  (segment length
+           (para
+            (loop for time below length by rate
+                  for index upfrom 0
+                  append (note channel rate (eltmod index chord)
+                               :d d
+                               :cfg (list :duty (funcall duty time)
+                                          :vol (funcall volume time)
+                                          :env env
+                                          :loop loop)))
+            (seq
+             (rst (1- length))
+             (and mute (silence-channel channel))))))
+
+(defun fat-arp (length chord &rest args)
+  (para
+   (apply #'arpeggio 0 length (apply #'chord (- (first chord) 0.08) (rest chord)) args)
+   (apply #'arpeggio 1 length (apply #'chord (+ (first chord) 0.08) (rest chord)) args)))
+
+(defun chord (root &rest notes)
+  (mapcar (lambda (note) (et root note)) notes))
 
 (defun wait (&optional (frames 20))
   (ldx (imm frames))
@@ -144,7 +245,7 @@
        (mptr #x42)
        (mptr-msb  (zp (1+ mptr)))
        (mptr-lsb  (zp mptr))
-       (log2-song-length 0)             ; Base 2 log of song length.
+       (log2-song-length 4)             ; Base 2 log of song length.
 
        ;; Reduce space by reusing patterns of registers.
        (regs-table (make-hash-table :test 'equal))
@@ -195,39 +296,130 @@
     (rts))
 
 
-  (flet ((emit-frame (frame)
-           (setf frame (pad-frame frame))
-           (unless (gethash frame regs-table)
-             (setf (gethash frame regs-table) *origin*)
-             ;; Reverse order, because player scans backward!
-             (dolist (pair (reverse frame)) (apply 'db pair)))
-           (push (gethash frame regs-table) music-sequence)))
+  (labels
+      ((emit-frame (frame)
+         (setf frame (pad-frame frame))
+         (unless (gethash frame regs-table)
+           (setf (gethash frame regs-table) *origin*)
+           ;; Reverse order, because player scans backward!
+           (dolist (pair (reverse frame)) (apply 'db pair)))
+         (push (gethash frame regs-table) music-sequence))
+
+       ;; Song elements:
+
+       (phase-aaab (a b) (seq a a a b))
+
+       (four-on-the-floor () (repeat 4 (thump 32 (et -24))))
+
+       (rhythm (fn notes &optional (transpose 0))
+         (seq
+          (funcall fn 32 (et transpose (nth 0 notes)))
+          (funcall fn 24 (et transpose (nth 1 notes)))
+          (funcall fn 16 (et transpose (nth 2 notes)))
+          (funcall fn 24 (et transpose (nth 3 notes)))
+          (funcall fn 32 (et transpose (nth 4 notes)))))
+
+       (swagger ()
+         (seq
+          (kick 16)
+          (hat 8)
+          (hat 8)
+          (snare 16)
+          (hat 8)
+          (hat 8 4)))
+
+       (stagger ()
+         (seq
+          (hat 8)
+          (kick 8)
+          (hat 8)
+          (hat 8)
+          (snare 16)
+          (rst 16)))
+
+       (jagger ()
+         (seq
+          (shaker 8 15)
+          (shaker 8 4)
+          (shaker 8 8)
+          (shaker 8 12)
+          (shaker 8 15)
+          (shaker 8 5)
+          (shaker 8 11)
+          (shaker 8 14)))
+
+       (intro-beat ()
+         (measure
+          (four-on-the-floor)
+          (seq
+           (swagger)
+           (swagger))))
+
+       (intro-fill-1 ()
+         (measure
+          (four-on-the-floor)
+          (seq (swagger)
+               (stagger))))
+
+       (intro-fill-2 ()
+         (measure
+          (four-on-the-floor)
+          (seq (jagger)
+               (jagger))))
+       )
 
     (align 16)
     (mapcar
      #'emit-frame
-     (segment
-      128
-      (para
-       (seq
-        (thump 32 (et -12))
-        (thump 24 (et -12 2))
-        (thump 16 (et -12 2))
-        (thump 24 (et -12 3))
-        (thump 32 (et -12 5)))
-       (seq
-        (kick 16)
-        (hat 8)
-        (hat 8)
-        (snare 16)
-        (hat 8)
-        (hat 8 4)
-        (hat 8)
-        (kick 8)
-        (hat 8)
-        (hat 8)
-        (snare 16)
-        (rst 16)))
+
+     (seq
+
+      (seq
+       (para
+        (phase-aaab
+         (measure
+          (rhythm #'thump '(0 0 0 0 7) -12)
+          (seq (swagger) (stagger)))
+         (measure
+          (seq (stagger) (stagger))
+          (four-on-the-floor)))
+        (seq
+         (repeat 2 (note 0 32 (et 0) :cfg '(:env t :vol 2 :loop nil)))
+         (repeat 1 (arpeggio 0 128 (chord 0.0 0 12 0 3 11 14 7 17 0 17 12 19 15 17 10 15) :d 15 :rate 8 :env t :loop nil :volume (constantly 3) :mute t))
+         (repeat 2 (note 0 32 (et 0) :cfg '(:env t :vol 2 :loop nil)))
+         ;;(fat-arp 128 '(0.0 0 12 0 3 11 14 7 17 0 17 12 19 15 17 20 19) :d 6 :rate 8 :env t :loop nil :volume (constantly 8) :mute nil)
+         ))
+       (phase-aaab
+        (measure
+         (seq (swagger) (stagger))
+         (rhythm #'bthump '(0 3 3 -2 0) -12))
+        (measure
+         (seq (stagger) (jagger)))))
+
+      (seq
+       (para
+        (phase-aaab
+         (intro-beat)
+         (intro-fill-1))
+        (seq
+         (measure (fat-arp 128 '(0.00  0 3 7 11) :rate 4 :volume (volramp 6 -1/24)))
+         (measure (fat-arp 128 '(0.00  0 2 5 8 ) :rate 4 :volume (volramp 8 -1/22)))
+         (measure (fat-arp 128 '(0.00  -2 7 8 12 ) :rate 4 :volume (volramp 9 -1/20)))
+         (measure (fat-arp 128 '(0.00  -1 2 3 7 ) :rate 4 :volume (volramp 10 -1/18)))))
+
+       (para
+        (phase-aaab
+         (intro-beat)
+         (intro-fill-2))
+        (seq
+         (measure (arpeggio 0 128 (chord -0.02  0 3 7 11) :rate 4 :volume (volramp 11 -1/16))
+                  (arpeggio 1 128 (chord  0.02  12 0 3 14 7 11) :rate 3 :volume (volramp 11 -1/13)))
+         (measure (arpeggio 0 128 (chord -0.02  0 2 5 8) :rate 4 :volume (volramp 12 -1/14))
+                  (arpeggio 1 128 (chord  0.02  2 5 8 12 15) :rate 3 :volume (volramp 12 -1/14)))
+         (measure (arpeggio 0 128 (chord -0.02  -2 7 8 12) :rate 4 :volume (volramp 13 -1/12))
+                  (arpeggio 1 128 (chord  0.02  5 15 8 12 15 17) :rate 3 :volume (volramp 13 -1/12)))
+         (measure (arpeggio 0 128 (chord -0.02  -1 2 3 7) :rate 4 :volume (volramp 15 -1/10) :mute t)
+                  (arpeggio 1 128 (chord  0.02  3 7 14 11 19 14) :rate 4 :volume (volramp 15 -1/10) :mute t)))))))
 
 
 
@@ -268,7 +460,7 @@
 
        (note 0 32 (et 12))
        (note 0 32 (et 7))
-       (note 0 32 (et 10)))))
+       (note 0 32 (et 10)))
 
 ;    (emit-frame (pad-frame (noteon 0 #b01000 220.0)))
 ;    (dotimes (i 63) (emit-frame (pad-frame '())))
