@@ -220,7 +220,7 @@
 
 
 ;;;; *******************************************************************
-;;;;  ( You are now about to witness the power of street knowledge. ;)
+;;;;  ( You are now about to witness the strength of street knowledge. ;)
 
 (let* ((global (make-instance 'basic-context :address #x8000))
        (*context* global)
