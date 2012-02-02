@@ -3,8 +3,10 @@
 ;;;; (?) and a wavy raster effect on top.  The art is converted from a
 ;;;; GIF file to an 8 KB character ROM during assembly. The image is
 ;;;; large enough that we need some timed code to switch pattern table
-;;;; banks mid-frame.  It also incorporates an NSF file to provide
-;;;; some crude music.
+;;;; banks mid-frame.  It also incorporates a simple music player,
+;;;; with the music described in a simple embedded DSL that compiles
+;;;; down to a sequence of register writes to drive the 2A03 sound
+;;;; hardware.
 
 ;;;; It targets a basic NROM board (32KB program, 8KB character). I
 ;;;; haven't had a chance to test on real hardware yet.
