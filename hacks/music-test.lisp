@@ -21,10 +21,14 @@
       (subseq list 0 length)))
 
 (defun translate-freq (seqlen lbits freq)
-  (let ((fbits (round (/ +ntsc-clock-rate+ seqlen freq))))
-    (values (ldb (byte 8 0) fbits)
-            (logior (ldb (byte 3 8) fbits)
-                    (ash lbits 3)))))
+  ;; DELAY doesn't deal with multiple values, thus the duplication here:
+  (values (delay 'reg2 (freq)
+              (ldb (byte 8 0)
+                   (round (/ +ntsc-clock-rate+ seqlen freq))))
+          (delay 'reg3 (freq)
+              (logior (ldb (byte 3 8)
+                           (round (/ +ntsc-clock-rate+ seqlen freq)))
+                      (ash lbits 3)))))
 
 (defun noteon (chan lbits freq)
   (multiple-value-bind (base seqlen)
@@ -112,7 +116,19 @@
 (defun repeat (n &rest args)
   (apply #'seq (mapcan #'copy-list (loop repeat n collect args))))
 
-(defun et (&rest args) (* 261.0 (expt 2 (/ (apply '+ args) 12))))
+(defparameter *tuning-root* nil)
+
+(defun get-tuning-root ()
+  (make-promise :name "Tuning Root"
+                :fun (lambda ()
+                       ;;(when *tuning-root* (print (list :tuning-root *tuning-root*)))
+                       (or *tuning-root*
+                           (error 'asm6502::resolvable-condition
+                                  :path "Tuning root not set.")))))
+
+(defun et (&rest args)
+  (delay 'et ((tuning (get-tuning-root)))
+    (* tuning (expt 2 (/ (apply '+ args) 12)))))
 
 (defun kick (length)
   (noise length 8 15 :vol 1))
@@ -126,20 +142,10 @@
 (defun thump (length &optional (pitch (et -24)))
   (segment
    length
-   (seq (tri 1 (* pitch 1))
-        (tri 1 (* pitch 4/3))
-        (tri 1 (* pitch 2/3))
-        (tri 1 (* pitch 1/2)))))
-
-(defun bthump (length pitch)
-  (segment length
-    (para (thump length pitch)
-          #+NIL
-          (note 1 8 (* 4.0 pitch) :d 6 :cfg '(:duty 1 :vol 12 :loop nil))
-          (seq
-           (note 0 1 (* 2.0 pitch) :cfg '(:duty 2 :vol 2 :loop nil))
-           (note 0 1 (* 4.0 pitch) :cfg '(:duty 2 :vol 2 :loop nil))
-           (note 0 1 (* 2.0 pitch) :cfg '(:duty 2 :vol 2 :loop nil))))))
+   (seq (tri 1 (delay nil (pitch) (* pitch 1)))
+        (tri 1 (delay nil (pitch) (* pitch 4/3)))
+        (tri 1 (delay nil (pitch) (* pitch 2/3)))
+        (tri 1 (delay nil (pitch) (* pitch 1/2))))))
 
 (defun shaker (length volume)
   (assert (>= length 2))
@@ -153,18 +159,6 @@
 
 (defun eltmod (i seq) (elt seq (mod i (length seq))))
 (defun clamp (x min max) (max (min x max) min))
-
-(defun arp-test ()
-  (apply 'seq
-         (loop for i below 128
-               as freq = (et (eltmod i '(0 3 5 -2 -4)) 12)
-               as vol = (clamp (ash (- 48 i) -2)
-                               0
-                               15)
-               as duty = (mod (ash i -2) 4)
-               collect
-               (para (note 0 3 freq :cfg (list :duty duty :env nil :loop t :vol vol))
-                     (note 1 3 (* freq 1.01) :cfg (list :duty duty :env nil :loop t :vol vol))))))
 
 (defun arp-test-2 ()
   (para
@@ -200,8 +194,8 @@
           0
           15)))
 
-(defun shimmer ()
-  (lambda (time) (mod (ash time -4) 4)))
+(defun shimmer (&optional (time-shift -4) (phase-offset 0))
+  (lambda (time) (mod (+ phase-offset (ash time time-shift)) 4)))
 
 (defun arpeggio (channel length chord &key
                  (rate 3)
@@ -227,8 +221,14 @@
 
 (defun fat-arp (length chord &rest args)
   (para
-   (apply #'arpeggio 0 length (apply #'chord (- (first chord) 0.08) (rest chord)) args)
-   (apply #'arpeggio 1 length (apply #'chord (+ (first chord) 0.08) (rest chord)) args)))
+   (apply #'arpeggio 0 length (apply #'chord (- (first chord) 0.06) (rest chord))
+          :duty (shimmer -2) args)
+   (apply #'arpeggio 1 length (apply #'chord (+ (first chord) 0.06) (rest chord))
+          :duty (shimmer -2 2) args)))
+
+(defun funky-arp (&rest args)
+  (fat-arp (* 8 (length args)) (list* 0.0 args)
+           :d 15 :rate 8 :env t :loop nil :volume (constantly 1) :mute t))
 
 (defun chord (root &rest notes)
   (mapcar (lambda (note) (et root note)) notes))
@@ -236,6 +236,17 @@
 (defun wait (&optional (frames 20))
   (ldx (imm frames))
   (as/until :zero (jsr 'wait) (dex)))
+
+(defun resolve-tree (tree)
+  (etypecase tree
+    (cons (cons (resolve-tree (car tree))
+                (resolve-tree (cdr tree))))
+    (null tree)
+    (integer tree)
+    (promise (force tree))))
+
+
+;;;; **********************************************************************
 
 (let* ((*context* (make-instance 'basic-context :address #x8000))
 
@@ -249,6 +260,7 @@
 
        ;; Reduce space by reusing patterns of registers.
        (regs-table (make-hash-table :test 'equal))
+       (histogram (make-array 16))
        (music-sequence '())
 
        (vblank-flag (zp #x96)))
@@ -298,12 +310,35 @@
 
   (labels
       ((emit-frame (frame)
+         (unless (<= (length frame) 16)
+           (error "Too many writes! ~X" (mapcar 'second frame)))
+         (incf (aref histogram (length frame)))
          (setf frame (pad-frame frame))
          (unless (gethash frame regs-table)
            (setf (gethash frame regs-table) *origin*)
            ;; Reverse order, because player scans backward!
            (dolist (pair (reverse frame)) (apply 'db pair)))
          (push (gethash frame regs-table) music-sequence))
+
+       (song (frames)
+         ;; So, I had this awesome idea of doing a sort of barber pole
+         ;; "infinite modulation" by slowly sliding the tuning
+         ;; downward through the course of the music loop via some
+         ;; clever abuse of the delay/force mechanism.. but it turns
+         ;; out there's not enough nearly enough space in the ROM to
+         ;; make it feasible without a much more sophisticated player
+         ;; routine. Darn.
+         (loop with initial-tuning = (* 261.0 (expt 2 1/12))
+               with final-tuning = initial-tuning ;(* initial-tuning (expt 2 -1/12))
+               with length = (length frames)
+               with asm6502::*memoize-promises* = nil
+               for frame in frames
+               for position upfrom 0
+               as frame-tuning = (+ initial-tuning (* (- final-tuning initial-tuning)
+                                                        (/ position length)))
+               do (let ((*tuning-root* frame-tuning))
+                    ;;(print (list :frame position :tuning frame-tuning :frame frame))
+                    (emit-frame (resolve-tree frame)))))
 
        ;; Song elements:
 
@@ -365,15 +400,57 @@
          (measure
           (four-on-the-floor)
           (seq (jagger)
-               (jagger))))
-       )
+               (jagger)))))
 
     (align 16)
-    (mapcar
-     #'emit-frame
+
+    (song
+;     (repeat 4 (fat-arp 128 '(0.00 0 4 7 11) :rate 4))
+#+NIL
+     (repeat 4
+       (para
+        (phase-aaab
+         (intro-beat)
+         (intro-fill-1))
+        (seq
+         (measure (fat-arp 128 '(0.00  0 3 7 11) :rate 4 :volume (volramp 9 -1/20)))
+         (measure (fat-arp 128 '(0.00  0 2 5 8 ) :rate 4 :volume (volramp 8 -1/22)))
+         (measure (fat-arp 128 '(0.00  -2 7 8 12 ) :rate 4 :volume (volramp 9 -1/20)))
+         (measure (fat-arp 128 '(0.00  -1 2 3 7 ) :rate 4 :volume (volramp 10 -1/18))))))
+
+
+
+
 
      (seq
 
+      ;; Smooth section
+      (seq
+       (para
+        (phase-aaab
+         (intro-beat)
+         (intro-fill-1))
+        (seq
+         (measure (fat-arp 128 '(0.00  0 3 7 11)   :rate 4 :volume (volramp 8 -1/22)))
+         (measure (fat-arp 128 '(0.00  0 2 5 8 )   :rate 4 :volume (volramp 8 -1/22)))
+         (measure (fat-arp 128 '(0.00  -2 7 8 12 ) :rate 4 :volume (volramp 9 -1/20)))
+         (measure (fat-arp 128 '(0.00  -1 2 3 7 )  :rate 4 :volume (volramp 10 -1/18)))))
+
+       (para
+        (phase-aaab
+         (intro-beat)
+         (intro-fill-2))
+        (seq
+         (measure (arpeggio 0 128 (chord -0.02   0  3  7 11)       :rate 4 :volume (volramp 11 -1/16))
+                  (arpeggio 1 128 (chord  0.02  12  0  3 14 7 11)  :rate 3 :volume (volramp 11 -1/13)))
+         (measure (arpeggio 0 128 (chord -0.02   0  2  5 8)        :rate 4 :volume (volramp 12 -1/14))
+                  (arpeggio 1 128 (chord  0.02   2  5  8 12 15)    :rate 3 :volume (volramp 12 -1/14)))
+         (measure (arpeggio 0 128 (chord -0.02  -2  7  8 12)       :rate 4 :volume (volramp 13 -1/12))
+                  (arpeggio 1 128 (chord  0.02   5 15  8 12 15 17) :rate 3 :volume (volramp 13 -1/12)))
+         (measure (arpeggio 0 128 (chord -0.02  -1  2  3 7)        :rate 4 :volume (volramp 15 -1/10) :mute t)
+                  (arpeggio 1 128 (chord  0.02   3  7 14 11 19 14) :rate 4 :volume (volramp 15 -1/10) :mute t)))))
+
+      ;; Funky section
       (seq
        (para
         (phase-aaab
@@ -384,42 +461,40 @@
           (seq (stagger) (stagger))
           (four-on-the-floor)))
         (seq
-         (repeat 2 (note 0 32 (et 0) :cfg '(:env t :vol 2 :loop nil)))
-         (repeat 1 (arpeggio 0 128 (chord 0.0 0 12 0 3 11 14 7 17 0 17 12 19 15 17 10 15) :d 15 :rate 8 :env t :loop nil :volume (constantly 3) :mute t))
-         (repeat 2 (note 0 32 (et 0) :cfg '(:env t :vol 2 :loop nil)))
-         ;;(fat-arp 128 '(0.0 0 12 0 3 11 14 7 17 0 17 12 19 15 17 20 19) :d 6 :rate 8 :env t :loop nil :volume (constantly 8) :mute nil)
-         ))
-       (phase-aaab
-        (measure
-         (seq (swagger) (stagger))
-         (rhythm #'bthump '(0 3 3 -2 0) -12))
-        (measure
-         (seq (stagger) (jagger)))))
-
-      (seq
+         (measure
+          (funky-arp 0 12 0 3 11 14 7 17 0 17 12 19 15 17 10 15))
+         (measure
+          (repeat 2
+           (para
+            (note 0 32 (et  0.026) :cfg '(:duty 1 :env t :vol 2 :loop nil))
+            (note 1 32 (et -0.026) :cfg '(:duty 3 :env t :vol 2 :loop nil)))))
+         (measure
+          (funky-arp 5 0 5 7 8 11 12 0 12 17 15 17 15 14 12 8 7))
+         (measure
+          (funky-arp 7 0 7 11 12 3 17 19 20 24 23 20 0 19 17 20))))
        (para
         (phase-aaab
-         (intro-beat)
-         (intro-fill-1))
+         (measure
+          (seq (swagger) (stagger))
+          (rhythm #'thump '(0 3 3 -2 0) -12))
+         (measure
+          (seq (stagger) (jagger))))
         (seq
-         (measure (fat-arp 128 '(0.00  0 3 7 11) :rate 4 :volume (volramp 6 -1/24)))
-         (measure (fat-arp 128 '(0.00  0 2 5 8 ) :rate 4 :volume (volramp 8 -1/22)))
-         (measure (fat-arp 128 '(0.00  -2 7 8 12 ) :rate 4 :volume (volramp 9 -1/20)))
-         (measure (fat-arp 128 '(0.00  -1 2 3 7 ) :rate 4 :volume (volramp 10 -1/18)))))
-
-       (para
-        (phase-aaab
-         (intro-beat)
-         (intro-fill-2))
-        (seq
-         (measure (arpeggio 0 128 (chord -0.02  0 3 7 11) :rate 4 :volume (volramp 11 -1/16))
-                  (arpeggio 1 128 (chord  0.02  12 0 3 14 7 11) :rate 3 :volume (volramp 11 -1/13)))
-         (measure (arpeggio 0 128 (chord -0.02  0 2 5 8) :rate 4 :volume (volramp 12 -1/14))
-                  (arpeggio 1 128 (chord  0.02  2 5 8 12 15) :rate 3 :volume (volramp 12 -1/14)))
-         (measure (arpeggio 0 128 (chord -0.02  -2 7 8 12) :rate 4 :volume (volramp 13 -1/12))
-                  (arpeggio 1 128 (chord  0.02  5 15 8 12 15 17) :rate 3 :volume (volramp 13 -1/12)))
-         (measure (arpeggio 0 128 (chord -0.02  -1 2 3 7) :rate 4 :volume (volramp 15 -1/10) :mute t)
-                  (arpeggio 1 128 (chord  0.02  3 7 14 11 19 14) :rate 4 :volume (volramp 15 -1/10) :mute t)))))))
+         (measure
+          (fat-arp 128 '(0.0  0 12 0 3 11 14 7 17 0 17 12 19 15 17 20 19)
+                   :d 6 :rate 8 :env t :loop nil :volume (constantly 3) :mute nil))
+         (measure
+          (seq
+           (para
+            (note 0 32 (et  0.026 24) :cfg '(:duty 1 :env t :vol 2 :loop nil))
+            (note 1 32 (et -0.026 24) :cfg '(:duty 3 :env t :vol 0 :loop nil)))
+           (para
+            (note 0 32 (et  0.026 24) :cfg '(:duty 1 :env t :vol 2 :loop nil))
+            (note 1 32 (et -0.026 12) :cfg '(:duty 3 :env t :vol 2 :loop nil)))))
+         (measure
+          (fat-arp 128 '(5.0  0 3 7 0 3 7 0 3 8 0 3 7 0 3 8) :rate 4 :d 3 :volume (volramp 10 -1/18)))
+         (measure
+          (fat-arp 128 '(0.0  2 5 8 11 2 5 8 14) :rate 4 :d 3 :volume (volramp 9 -1/18))))))))
 
 
 
@@ -467,11 +542,17 @@
 ;    (emit-frame (pad-frame (noteon 0 #b01000 330.0)))
 ;    (dotimes (i 63) (emit-frame (pad-frame '())))
 
+      (print (list :histogram histogram))
+
     (align 256)
     (with-label music-start
-      (assert (= (length music-sequence) (* 128 (expt 2 log2-song-length)))) ; FIXME
+      ;;(assert (= (length music-sequence) (* 128 (expt 2 log2-song-length)))) ; FIXME
+      (unless (= (length music-sequence) (* 128 (expt 2 log2-song-length)))
+        (error "Song length is ~:D, should be ~:D" (length music-sequence) (* 128 (expt 2 log2-song-length))))
       (print (list :num-unique  (length (remove-duplicates music-sequence))))
       (mapcar #'dw (reverse music-sequence))))
+
+  (print (list :music-size (- *origin* #x8000)))
 
   (procedure reset
     (sei)                               ; Init CPU

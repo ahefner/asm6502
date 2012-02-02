@@ -17,10 +17,20 @@
   (declare (ignore force-p))
   expression)
 
+(defparameter *memoize-promises* t
+  "Controls whether fulfilled promises are cached. Only useful in
+  abuses of the promise mechanism involving special variables. Don't
+  do this.")
+
+(defun set-promise-value (promise value)
+  (when *memoize-promises*
+    (setf (promise-value promise) value))
+  value)
+
 (defmethod force ((p promise) &optional (error-p t))
   (if (not (eq (promise-value p) *lazy-marker*))
       (promise-value p)
-      (handler-case (setf (promise-value p) (funcall (promise-fun p)))
+      (handler-case (set-promise-value p (funcall (promise-fun p)))
         (resolvable-condition (condition)
           (setf (path condition) (cons (promise-name p) (path condition)))
           (funcall (if error-p #'error #'signal) condition)
@@ -152,9 +162,9 @@
 
 (defmethod context-emit ((context code-vector) bytes)
   (when (> (+ (context-address context) (length bytes)) #x10000)
-    (warn "Context emit of $~X bytes at ~X will overflow address space"
-          (context-address context)
-          (length bytes)))
+    (warn "Context emit of $~X bytes at $~X will overflow address space"
+          (length bytes)
+          (context-address context)))
   (map nil (lambda (x)
              (unless (typep x '(or (integer 0 255) promise))
                (error "Attempt to emit garbage (~A) at ~X" x (context-address context)))

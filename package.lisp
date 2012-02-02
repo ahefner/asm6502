@@ -13,7 +13,7 @@
 (defpackage :asm6502
   (:use :common-lisp :6502 :6502-modes)
   (:export #:msb #:lsb #:encode-byte #:encode-word
-           #:promise #:promise-name #:promise-fun #:delay #:force #:forcing
+           #:promise :make-promise #:promise-name #:promise-fun #:delay #:force #:forcing
            #:binary-file
            #:context-emit #:context-address
            #:context-code-vector #:link
