@@ -297,16 +297,13 @@
     (pokeword (label 'music-start) mptr) ; Set initial playback pointer.
     (rts))
 
-  (procedure reset
+  (procedure reset                      ; ------------------------------------
     (sei)
     (cld)
     (poke #b00010000 +ppu-cr1+)         ; NMI off during init.
     (poke #b00000000 +ppu-cr2+)         ; Do turn the screen off too..
     (ldx (imm #xFF))                    ; Set stack pointer
     (txs)
-
-    ;; Initialize music player.
-    ;;  ...or don't.
 
     ;; Init sound hardware
     (poke 0 #x4015)                     ; Silence all channels
@@ -315,33 +312,19 @@
     (as/until :negative (bita (mem +ppu-status+))) ; PPU warmup interval
     (as/until :negative (bita (mem +ppu-status+))) ; (two frames)
 
-    (jsr 'player-init)
+    ;; Paranoid initialization. Had some intermittent quicks on real
+    ;; hardware, as though the nametables weren't fully initialized,
+    ;; so I've inserted a bunch of paranoid vblank syncs, and call the
+    ;; init routine multiple times just to be sure.
+    (lda (imm 3))
+    (sta countdown)
+    (as/until :zero
+      (jsr 'init-nametable)
+      (jsr 'init-attr)
+      (jsr 'init-palette)
+      (dec countdown))
 
-    ;; Fill nametable.
-    (lda (mem +ppu-status+))            ; Reset address latch..
-    (ppuaddr #x2000)
-    (jsr 'fill-nametable)
-    (lda (mem +ppu-status+))            ; "                   "
-    (ppuaddr #x2400)
-    (jsr 'fill-nametable)
-
-    ;; Fill attribute table.
-    (lda (mem +ppu-status+))            ; Reset address latch..
-    (ppuaddr #x23C0)
-    (ldy (imm 0))
-    (lda (imm #b01010101))
-    (jsr 'fill-attributes)
-    (ppuaddr #x27C0)
-    (ldy (imm #b10101010))
-    (lda (imm #b11111111))
-    (jsr 'fill-attributes)
-
-    ;; Program palette.
-    (ppuaddr #x3F00)
-    (dolist (color '(#x3F #x2D #x3D #x30  #x3F #x03 #x13 #x23
-                     #x3F #x2D #x3D #x30  #x3F #x05 #x15 #x25
-                     #x3F #x3F #x27 #x37))
-      (poke color +vram-io+))
+    (jsr 'player-init)                  ; Initialize music player
 
     (lda (imm 64))                      ; Initialize scroll variables
     (sta scroll-x)
@@ -436,10 +419,44 @@
      (dey))
     (rts))
 
+  (procedure init-nametable
+    ;; Fill nametable.
+    (as/until :negative (bita (mem +ppu-status+)))
+    (ppuaddr #x2000)
+    (jsr 'fill-nametable)
+    (as/until :negative (bita (mem +ppu-status+)))
+    (ppuaddr #x2400)
+    (jsr 'fill-nametable)
+    (rts))
+
+  (procedure init-attr
+    ;; Fill attribute table.
+    (as/until :negative (bita (mem +ppu-status+)))
+    (ppuaddr #x23C0)
+    (ldy (imm 0))
+    (lda (imm #b01010101))
+    (jsr 'fill-attributes)
+    (as/until :negative (bita (mem +ppu-status+)))
+    (ppuaddr #x27C0)
+    (ldy (imm #b10101010))
+    (lda (imm #b11111111))
+    (jsr 'fill-attributes)
+    (rts))
+
+  (procedure init-palette
+    ;; Program palette.
+    (ppuaddr #x3F00)
+    (dolist (color '(#x3F #x2D #x3D #x30  #x3F #x03 #x13 #x23
+                     #x3F #x2D #x3D #x30  #x3F #x05 #x15 #x25
+                     #x3F #x3F #x27 #x37))
+      (poke color +vram-io+))
+    (rts))
+
   (align 256)
   (procedure framestep
     (jsr 'wait-for-vblank)
     (lda (mem +ppu-status+))          ; Reset PPU address latch.
+    (poke 0 +spr-addr+)               ; Reset sprite address!
     (lda (imm (msb sprite-table)))    ; Sprite DMA transfer.
     (sta (mem +sprite-dma+))
 
@@ -482,7 +499,7 @@
     (jsr 'update-sprites)
 
     ;; Switch pattern tables mid-frame:
-    (emit-delay (+ (* 114 107) 30))
+    (emit-delay (+ (* 114 107) 22))
     (lda top-ntaddr)
     (eor (imm #b10010000))            ; Invert pattern bank.
     (sta (mem +ppu-cr1+))
@@ -546,7 +563,9 @@
     ;; the sprite tables, and if I didn't shut it off, you'd notice
     ;; the background stopped waving.
     (loop repeat 10 do (nop))           ; Realign with hblank.. again.
-    (poke 0 +ppu-cr2+)
+    ;; Actually, leave the sprites on, otherwise they'll be disabled
+    ;; during the DMA transfer, which is unwise.
+    (poke #x10 +ppu-cr2+)
 
     (rts))
 
