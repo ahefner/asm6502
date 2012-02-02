@@ -12,4 +12,4 @@
                (:file "nes-hacklets")
                (:file "nes-test-1")
                (:file "nes-test-2")
-               (:file "ryden")))
+               (:file "dollhouse")))
