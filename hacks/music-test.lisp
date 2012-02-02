@@ -342,7 +342,7 @@
 
        ;; Song elements:
 
-       (phase-aaab (a b) (seq a a a b))
+       (phrase-aaab (a b) (seq a a a b))
 
        (four-on-the-floor () (repeat 4 (thump 32 (et -24))))
 
@@ -405,29 +405,11 @@
     (align 16)
 
     (song
-;     (repeat 4 (fat-arp 128 '(0.00 0 4 7 11) :rate 4))
-#+NIL
-     (repeat 4
-       (para
-        (phase-aaab
-         (intro-beat)
-         (intro-fill-1))
-        (seq
-         (measure (fat-arp 128 '(0.00  0 3 7 11) :rate 4 :volume (volramp 9 -1/20)))
-         (measure (fat-arp 128 '(0.00  0 2 5 8 ) :rate 4 :volume (volramp 8 -1/22)))
-         (measure (fat-arp 128 '(0.00  -2 7 8 12 ) :rate 4 :volume (volramp 9 -1/20)))
-         (measure (fat-arp 128 '(0.00  -1 2 3 7 ) :rate 4 :volume (volramp 10 -1/18))))))
-
-
-
-
-
      (seq
-
       ;; Smooth section
       (seq
        (para
-        (phase-aaab
+        (phrase-aaab
          (intro-beat)
          (intro-fill-1))
         (seq
@@ -437,7 +419,7 @@
          (measure (fat-arp 128 '(0.00  -1 2 3 7 )  :rate 4 :volume (volramp 10 -1/18)))))
 
        (para
-        (phase-aaab
+        (phrase-aaab
          (intro-beat)
          (intro-fill-2))
         (seq
@@ -453,7 +435,7 @@
       ;; Funky section
       (seq
        (para
-        (phase-aaab
+        (phrase-aaab
          (measure
           (rhythm #'thump '(0 0 0 0 7) -12)
           (seq (swagger) (stagger)))
@@ -473,7 +455,7 @@
          (measure
           (funky-arp 7 0 7 11 12 3 17 19 20 24 23 20 0 19 17 20))))
        (para
-        (phase-aaab
+        (phrase-aaab
          (measure
           (seq (swagger) (stagger))
           (rhythm #'thump '(0 3 3 -2 0) -12))
@@ -496,53 +478,7 @@
          (measure
           (fat-arp 128 '(0.0  2 5 8 11 2 5 8 14) :rate 4 :d 3 :volume (volramp 9 -1/18))))))))
 
-
-
-      #+NIL
-      (repeat 8
-              (seq (noise 1 2 15 :env nil :vol 1)
-                   (noise 1 2 13 :env nil :vol 2 :short t)
-                   (noise 1 2 11 :env nil :vol 3)
-                   (noise 1 2 9 :env nil :vol 4 :short t)
-                   (noise 1 2 7 :env nil :vol 5)
-                   (noise 1 2 5 :env nil :vol 6 :short t)
-                   (noise 1 2 3 :env nil :vol 7)
-                   (noise 1 2 1 :env nil :vol 8))
-              (noise 8 1 1 :vol 0))
-      #+NIL
-      (seq
-       (noise 16 16 3 :short nil :env t :loop t :vol 0)
-       (noise 16 1 12 :short nil :env t :loop t :vol 2)
-       (noise 16 16 7 :short t :env t :loop t :vol 0)
-       (noise 16 16 11 :short t :env t :loop t :vol 0)
-       (noise 16 1 1 :vol 1 )
-       (noise 16 1 3 :vol 1)
-       (noise 16 1 9 :vol 1) )
-      #+NIL
-      (seq
-       (para
-        (note 0 8 (et 0.00)  :cfg '(:duty 3 :loop nil :vol 15))
-        (note 1 8 (et 0.04)  :cfg '(:duty 3 :loop nil :vol 15)))
-       (para
-        (note 0 8 (et 0.00)  :cfg '(:duty 3 :loop nil :vol 15))
-        (note 1 8 (et 0.08)  :cfg '(:duty 3 :loop nil :vol 15)))
-       (para
-        (note 0 8 (et 0.00)  :cfg '(:duty 3 :loop nil :vol 15))
-        (note 1 8 (et 0.12)  :cfg '(:duty 3 :loop nil :vol 15)))
-       (para
-        (note 0 8 (et 0.00)  :cfg '(:duty 3 :loop nil :vol 15))
-        (note 1 8 (et 0.15)  :cfg '(:duty 3 :loop nil :vol 15)))
-
-       (note 0 32 (et 12))
-       (note 0 32 (et 7))
-       (note 0 32 (et 10)))
-
-;    (emit-frame (pad-frame (noteon 0 #b01000 220.0)))
-;    (dotimes (i 63) (emit-frame (pad-frame '())))
-;    (emit-frame (pad-frame (noteon 0 #b01000 330.0)))
-;    (dotimes (i 63) (emit-frame (pad-frame '())))
-
-      (print (list :histogram histogram))
+    (print (list :histogram histogram))
 
     (align 256)
     (with-label music-start
@@ -560,8 +496,8 @@
     (poke 0 +ppu-cr1+)
     (ldx (imm #xFF))
     (txs)
-;;    (as/until :negative (bita (mem +ppu-status+))) ; PPU warmup
-;;    (as/until :negative (bita (mem +ppu-status+)))
+    (as/until :negative (bita (mem +ppu-status+))) ; PPU warmup
+    (as/until :negative (bita (mem +ppu-status+)))
 
     ;; Init sound hardware..
 
@@ -587,10 +523,7 @@
       (brk) (db 5)
       (jsr 'player-step)
       (jsr 'wait)
-      (jmp (mem 'loop)))
-
-
-    )
+      (jmp (mem 'loop))))
 
   (procedure brk-handler (rti))
 
@@ -610,69 +543,3 @@
 
   ;; Write .NES file
   (write-ines "/tmp/music.nes" (link *context*)))
-
-
-;;;; Old shit:
-
-#+NIL
-    (with-label main-loop
-
-      (brk) (db 1)
-
-
-      (poke #x08 #x4008)
-
-      (dotimes (i 4)
-        (poke #b10001111 #x4000)
-        (pr 0 #b00101 220.0)
-        (pr 2 0 110.0)
-        (wait 3)
-        (poke #b10001111 #x4000)
-        (pr 0 #b00101 440.0)
-        (pr 2 0 220.0)
-        (wait 1))
-
-      (dotimes (i 4)
-        (poke #b10001111 #x4000)
-        (pr 0 #b00101 294.0)
-        (pr 2 0 147.0)
-        (wait 3)
-        (poke #b11001111 #x4000)
-        (pr 0 #b00101 (* 3/2 294.0))
-        (pr 2 0 73.0)
-        (wait 1))
-
-      (wait 30)
-
-
-
-#+NIL
-      (loop for interval in '(1/1 4/3 3/2 9/5)
-            as freq = (* 440 interval)
-            as detune = (* freq 1.05)
-            do
-
-            (poke #b10101000 #x4000)
-            (poke 0 #x4001)
-            (let* ( (fbits (round (/ +ntsc-clock-rate+ 8 freq)))
-                   (lbits #b11000)
-                    (a (ldb (byte 8 0) fbits))
-                    (b (logior (ldb (byte 3 8) fbits)
-                               (ash lbits 3))))
-              (poke a #x4002)
-              (poke b #x4003))
-
-            (poke #b10001000 #x4004)
-            (poke 0 #x4005)
-            (let* ((fbits (round (/ +ntsc-clock-rate+ 8 (+ detune freq))))
-                   (lbits #b11000)
-                    (a (ldb (byte 8 0) fbits))
-                    (b (logior (ldb (byte 3 8) fbits)
-                               (ash lbits 3))))
-              (poke a #x4006)
-              (poke b #x4007))
-
-            (ldx (imm 2))
-            (as/until :zero (jsr 'wait) (dex)))
-
-      (jmp (mem 'main-loop)))
