@@ -8,8 +8,9 @@
 ;;;; down to a sequence of register writes to drive the 2A03 sound
 ;;;; hardware.
 
-;;;; It targets a basic NROM board (32KB program, 8KB character). I
-;;;; haven't had a chance to test on real hardware yet.
+;;;; It targets a basic NROM board (32KB program, 8KB character,
+;;;; vertical mirroring). I've tested it on an EPROM cart made from a
+;;;; Gyromite board.
 
 ;;;; I'm neither a demo coder nor particularly experienced at 6502
 ;;;; assembly language, so expect nothing clever here.
