@@ -126,7 +126,7 @@
   (:documentation "Set the current virtual address of the context"))
 
 (defgeneric context-find-label (context symbol)
-  (:documentation "Returns a promise for the address of a symbol, or nil."))
+  (:documentation "Returns the address of a label, or nil."))
 
 (defgeneric context-set-label (context symbol &optional address)
   (:documentation "Set the address of a label. If not supplied, the current address is used."))
