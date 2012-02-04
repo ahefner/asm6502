@@ -112,7 +112,7 @@
 (defsetf binary-file (filename &rest args) (sequence)
   `(write-binary-file ,filename ,sequence ,@args))
 
-;;;; Assembly context protocol (symbol table, accumulated output)
+;;;; Assembly context protocol
 
 (defvar *context* nil "Current assembly context")
 
@@ -133,12 +133,12 @@
 
 (defgeneric context-emit-instruction (context vector)
   (:documentation "Emit an instruction into the assembly context. This
-  exists to provide additional information to the context.")
+  is a hint, for contexts which want to handle instructions
+  specially (e.g. cycle counting).")
   (:method (context vector) (context-emit context vector)))
 
 (defgeneric link (context)
-  (:documentation "Prepare and return final, assembled output.")
-  (:method (context) (resolve-vector (context-code-vector context))))
+  (:documentation "Prepare and return final, assembled output."))
 
 ;;; Basic implementation of assembly context
 
@@ -159,6 +159,9 @@
                  :reader context-code-vector
                  :initform (make-array 0 :adjustable t :fill-pointer t))
    (address :initarg :address :accessor context-address :initform #x8000)))
+
+(defmethod link ((context code-vector))
+  (resolve-vector (context-code-vector context)))
 
 (defmethod context-emit ((context code-vector) bytes)
   (when (> (+ (context-address context) (length bytes)) #x10000)
