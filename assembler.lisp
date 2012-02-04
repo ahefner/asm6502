@@ -114,6 +114,8 @@
 
 ;;;; Assembly context protocol (symbol table, accumulated output)
 
+(defvar *context* nil "Current assembly context")
+
 (defgeneric context-emit (context vector)
   (:documentation "Emit a vector of bytes into the assembly context"))
 
@@ -137,8 +139,6 @@
 (defgeneric link (context)
   (:documentation "Prepare and return final, assembled output.")
   (:method (context) (resolve-vector (context-code-vector context))))
-
-(defvar *context* nil "Current assembly context")
 
 ;;; Basic implementation of assembly context
 
