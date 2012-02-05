@@ -10,12 +10,10 @@
 
 (defmacro program ((filename &rest rom-args)
                    &body body)
-  `(let ((program
-             (let ((*context* (make-instance 'basic-context :address #xC000)))
-               ,@body
-               (link *context*))))
-     (setf (binary-file "/tmp/prg.bin") program)
-     (write-ines ,filename program ,@rom-args)))
+  `(let* ((*context* (make-instance 'basic-context :address #xC000)))
+     ,@body
+     (setf (binary-file "/tmp/prg.bin") (link *context*))
+     (write-ines ,filename (link *context*) ,@rom-args)))
 
 (program ("/tmp/audio-test-1.nes")
   (advance-to #xE000)                   ; Put everything in the last bank.
