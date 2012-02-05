@@ -120,8 +120,8 @@
          (cycle-count ,cycle-count)
          (loop-p ,loop))
      (when loop-p (decf cycle-count 3))
-     (unless (> cycle-count 0) (error "Cycle count for timed section is too small."))
-
+     (unless (> cycle-count 0)
+       (error "Cycle count for timed section is too small."))
      (unless (>= ,cycle-count cycles)
        (error "Timed section takes ~D cycles, which is longer than ~D cycles."
               cycles ,cycle-count))

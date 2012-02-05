@@ -52,7 +52,7 @@ unknown, the first value is NIL and the second T."
 (defclass cycle-counting-context (delegate-code-vector
                                   delegate-symbol-lookup)
   ((cycle-count :initform 0 :accessor cycle-count :initarg :cycle-count)
-   (precise-p   :initform t   :accessor precise-p   :initarg :precise-p)))
+   (precise-p   :initform t :accessor precise-p   :initarg :precise-p)))
 
 (defmethod context-note-cycles ((context cycle-counting-context) num-cycles)
   (incf (cycle-count context) num-cycles))
