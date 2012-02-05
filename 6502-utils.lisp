@@ -25,18 +25,8 @@
 ;;; to generate conditional branch to the else clause. If the 'else-compiler'
 ;;; is omitted, the jump following the "then" clause will be optimized away.
 
-(defun assemble-if (branch-compiler then-compiler &optional else-compiler)
-  (let ((else-sym    (gensym "ELSE"))
-        (finally-sym (gensym "FINALLY")))
-    (funcall branch-compiler (rel else-sym))
-    (funcall then-compiler)
-    (when else-compiler (jmp (mem (label finally-sym))))
-    (set-label else-sym)
-    (when else-compiler (funcall else-compiler))
-    (set-label finally-sym)))
-
 (defgeneric condition-to-branch (condition)
-  (:documentation "Produce a closure capable of generating a branch to
+  (:documentation "Return a function capable of generating a branch to
  the given argument if the condition is not true." ))
 
 (defmethod condition-to-branch ((condition symbol))
@@ -55,26 +45,36 @@
              (:no-overflow . bvs))))
    (error "Unknown condition ~A" condition)))
 
+(defun assemble-if (branch-compiler then-compiler &optional else-compiler)
+  (let ((else-sym    (gensym "ELSE"))
+        (finally-sym (gensym "FINALLY")))
+    (funcall branch-compiler (rel else-sym))
+    (funcall then-compiler)
+    (when else-compiler (jmp (mem (label finally-sym))))
+    (set-label else-sym)
+    (when else-compiler (funcall else-compiler))
+    (set-label finally-sym)))
+
 (defmacro asif (condition &body statements)
   (let ((then statements)
         (else nil)
         (part (position :else statements)))
     (when part
-      (setf then (subseq statements 0 part))
-      (setf else (subseq statements (1+ part) nil)))
+      (setf then (subseq statements 0 part)
+            else (subseq statements (1+ part) nil)))
     `(assemble-if
       ',(condition-to-branch condition)
       (lambda () ,@then)
       ,(and else `(lambda () ,@else)))))
-
-(defmacro with-label (label &body body)
-  `(progn (set-label ',label) ,@body))
 
 (defmacro as/until (condition &body body)
   (let ((sym (gensym)))
     `(with-label ,sym
        ,@body
        (funcall (condition-to-branch ',condition) (rel ',sym)))))
+
+(defmacro with-label (label &body body)
+  `(progn (set-label ',label) ,@body))
 
 (defmacro procedure (name &body body)
   `(progn
