@@ -374,9 +374,6 @@
 ;;; abs,Y   19      39      59      79      99      B9      D9      F9
 ;;; abs,X   1D      3D      5D      7D      9D      BD      DD      FD
 
-(defmethod choose-opcode ((instruction (eql 'sta)) (operand imm))
-  (invalid-operand-error instruction operand))
-
 (defun group-1-addr-code (x)
   (typecase x
     (idxi #b000)  ;   (zero page,X)
@@ -403,6 +400,10 @@
 (def6502 LDA  group-1-asm #b101)
 (def6502 CMP  group-1-asm #b110)
 (def6502 SBC  group-1-asm #b111)
+
+(defmethod choose-opcode ((instruction (eql 'sta)) (operand imm))
+  ;; One exception: STA with immediate destination makes no sense.
+  (invalid-operand-error instruction operand))
 
 ;;; Group 2:
 ;;;                 ASL     ROL     LSR     ROR     STX     LDX     DEC     INC
