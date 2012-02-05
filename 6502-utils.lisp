@@ -79,8 +79,7 @@
 (defmacro procedure (name &body body)
   `(progn
      (set-label ',name)
-     (let* ((,name (make-instance 'local-context :parent *context*))
-            (*context* ,name))
+     (let ((*context* (make-instance 'local-context :parent *context*)))
        ,@body)))
 
 ;;; Delays and timed sections
