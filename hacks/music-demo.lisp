@@ -26,7 +26,6 @@
   (process-dac-waveform
    (binary-file (merge-pathnames "fingers_30299.pcm" *path*))
    :prescale 0.5
-   :white-noise-bits 0.4
    :error-feedback 1.0))
 
 (macrolet
