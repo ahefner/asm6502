@@ -205,11 +205,12 @@
 (defmethod context-emit ((context delegate-code-vector) vector)
   (context-emit (context-parent context) vector))
 
-(defclass delegate-symbol-definition (delegate-context) ())
 (defclass delegate-symbol-lookup     (delegate-context) ())
 
 (defmethod context-find-label ((context delegate-symbol-lookup) symbol)
   (context-find-label (context-parent context) symbol))
+
+(defclass delegate-symbol-definition (delegate-context) ())
 
 (defmethod context-set-label ((context delegate-symbol-definition) symbol
                               &optional (address (context-address context)))
@@ -225,8 +226,7 @@
 ;;; Local context, the base upon which to build local symbol scopes and
 ;;; special-purpose contexts.
 
-(defclass local-context (delegate-code-vector local-symbol-table)
-  ())
+(defclass local-context (delegate-code-vector local-symbol-table) ())
 
 ;;;; User interface:
 
