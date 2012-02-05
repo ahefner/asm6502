@@ -39,16 +39,21 @@
   (:documentation "Produce a closure capable of generating a branch to
  the given argument if the condition is not true." ))
 
-(defmethod condition-to-branch ((condition (eql :positive)))    'bmi)
-(defmethod condition-to-branch ((condition (eql :negative)))    'bpl)
-(defmethod condition-to-branch ((condition (eql :carry)))       'bcc)
-(defmethod condition-to-branch ((condition (eql :no-carry)))    'bcs)
-(defmethod condition-to-branch ((condition (eql :zero)))        'bne)
-(defmethod condition-to-branch ((condition (eql :not-zero)))    'beq)
-(defmethod condition-to-branch ((condition (eql :equal)))       'bne)
-(defmethod condition-to-branch ((condition (eql :not-equal)))   'beq)
-(defmethod condition-to-branch ((condition (eql :overflow)))    'bvc)
-(defmethod condition-to-branch ((condition (eql :no-overflow))) 'bvs)
+(defmethod condition-to-branch ((condition symbol))
+  (or
+   (cdr
+    (assoc condition
+           '((:positive    . bmi)
+             (:negative    . bpl)
+             (:carry       . bcc)
+             (:no-carry    . bcs)
+             (:zero        . bne)
+             (:not-zero    . beq)
+             (:equal       . bne)
+             (:not-equal   . beq)
+             (:overflow    . bvc)
+             (:no-overflow . bvs))))
+   (error "Unknown condition ~A" condition)))
 
 (defmacro asif (condition &body statements)
   (let ((then statements)
