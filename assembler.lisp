@@ -114,8 +114,6 @@
 
 ;;;; Assembly context protocol
 
-(defvar *context* nil "Current assembly context")
-
 (defgeneric context-emit (context vector)
   (:documentation "Emit a vector of bytes into the assembly context"))
 
@@ -230,9 +228,28 @@
 (defclass local-context (delegate-code-vector local-symbol-table)
   ())
 
-;;;; Helpers
+;;;; User interface:
+
+(defvar *context* nil "Current assembly context")
+(define-symbol-macro *origin* (context-address *context*))
 
 (defun emit (bytes) (context-emit *context* bytes))
+
+(defun db (&rest bytes)
+  (dolist (byte bytes) (context-emit *context* (encode-byte byte))))
+
+(defun dw (&rest words)
+  (dolist (word words) (context-emit *context* (encode-word word))))
+
+(defun advance-to (offset &optional (fill-byte #xFF))
+  (let ((delta (- offset (context-address *context*))))
+    (when (< offset 0)
+      (error "Cannot advance to ~X, it is less than the current assembly address (~X)"
+	     offset (context-address *context*)))
+    (context-emit *context* (make-array delta :initial-element fill-byte))))
+
+(defun align (alignment &optional (fill-byte #xFF))
+  (advance-to (* alignment (ceiling (context-address *context*) alignment)) fill-byte))
 
 (defun label (name &key (offset 0) (context *context*))
   (assert (not (null context)))
@@ -245,26 +262,6 @@
 (defun set-label (name &optional (context *context*))
   (context-set-label context name)
   name)
-
-;;;; Assembler Directives
-
-(define-symbol-macro *origin* (context-address *context*))
-
-(defun advance-to (offset &optional (fill-byte #xFF))
-  (let ((delta (- offset (context-address *context*))))
-    (when (< offset 0)
-      (error "Cannot advance to ~X, it is less than the current assembly address (~X)"
-	     offset (context-address *context*)))
-    (context-emit *context* (make-array delta :initial-element fill-byte))))
-
-(defun align (alignment &optional (fill-byte #xFF))
-  (advance-to (* alignment (ceiling (context-address *context*) alignment)) fill-byte))
-
-(defun db (&rest bytes)
-  (dolist (byte bytes) (context-emit *context* (encode-byte byte))))
-
-(defun dw (&rest words)
-  (dolist (word words) (context-emit *context* (encode-word word))))
 
 ;;;;
 ;;;; Definition of Addressing Modes
