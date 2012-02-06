@@ -254,7 +254,7 @@
        (top-ntaddr  (zp #x97))
        (vblank-flag (zp #x96)))         ; Set by NMI handler.
 
-  ;; Step music playback. Advances MFR.
+  ;; Step music playback. Advances MPTR.
   (procedure player-step
 
     ;; Transfer *MPTR to MFR and play this frame.
@@ -408,7 +408,6 @@
 
   ;;; Do register writes for this frame of music. Set MFR to the
   ;;; set of writes for this frame (16*2 bytes).
-  ;;; (I moved this here to tuck it inside the alignment padding.)
   (procedure player-write
     (ldy (imm #x1F))
     (as/until :negative
