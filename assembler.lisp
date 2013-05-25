@@ -110,7 +110,9 @@
       data)))
 
 (defsetf binary-file (filename &rest args) (sequence)
-  `(write-binary-file ,filename ,sequence ,@args))
+  `(apply 'write-binary-file ,filename ,sequence ,args)
+  ;; Doesn't work on CCL:
+  #+NIL `(write-binary-file ,filename ,sequence ,@args))
 
 ;;;; Assembly context protocol
 
