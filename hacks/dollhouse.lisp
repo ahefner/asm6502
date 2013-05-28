@@ -218,9 +218,7 @@
 (defun chord (root &rest notes)
   (mapcar (lambda (note) (et root note)) notes))
 
-
-
-;;;; *******************************************************************
+;;;; *********************************************************************
 ;;;;  ( You are now about to witness the strength of street knowledge. ;)
 
 (let* ((global (make-instance 'basic-context :address #x8000))
@@ -725,7 +723,7 @@
       (sta (aby sprite-table))          ; Store in sprite Y coordinate
       (pla)                             ; Pop sine
       (sta (aby (+ 3 sprite-table)))    ; Store in sprite X coordinate
-      (dex))                            ; Decrememnt sprite index
+      (dex))                            ; Decrement sprite index
     (rts))
 
   (align 256)
