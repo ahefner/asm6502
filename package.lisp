@@ -61,6 +61,7 @@
    #:+dmc-length+
    #:+sprite-dma+
    #:+papu-control+
+   #:+papu-irq-ctrl+
    #:+joypad-1+
    #:+joypad-2+
    #:ines-header

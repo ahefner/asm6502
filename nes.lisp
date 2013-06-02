@@ -40,6 +40,7 @@
 
 (defconstant +sprite-dma+     #x4014)
 (defconstant +papu-control+   #x4015)
+(defconstant +papu-irq-ctrl+  #x4017)
 
 (defconstant +joypad-1+ #x4016)
 (defconstant +joypad-2+ #x4017)
