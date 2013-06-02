@@ -47,7 +47,7 @@
 
 (defparameter *current-prg* nil       ; "test2-burnt-7.bin"
   "Previously programmed version of PRG ROM. Used to determine whether
-  the newly assembled ROM can be safely programmed over top the
+  the newly assembled ROM can be safely programmed over an
   existing EPROM, and to determine lower/upper bounds of the changed
   region, to minimize the programming time.")
 
@@ -303,7 +303,7 @@ New byte at ~X is ~8,'0,,B (versus ~8,'0,,B" index x y)))
         (jsr (mem (label 'read-joypad-1)))
         (lda *jtmp*)
         (tax)
-        (and 15)
+        (anda (imm 15))
         (sta *color*)
         (inc *color*)
         (eor *lastj*)
@@ -377,6 +377,36 @@ New byte at ~X is ~8,'0,,B (versus ~8,'0,,B" index x y)))
         (rts))
 
       (with-label ignore-irq (rti)))
+
+  ;;;; -------------------------------------------------------
+    (subprogram (grayscale-test "Grayscales")
+      (jsr 'disable-screen)
+      (ldx (imm 0))
+      ;(jsr 'fill-nametable-x)
+      (ppuaddr #x3F00)
+      (loop repeat 4 do
+            (poke #x0F +vram-io+)
+            (poke #x2D +vram-io+)
+            (poke #x00 +vram-io+)
+            (poke #x3D +vram-io+))
+      (jsr 'clear-screen)
+      (ppuxy 3 3)
+      (vram-string "Grayscale Test")
+
+      (dolist (y '(8 9 10 11))
+        (ppuxy 4 y)
+        (poke 251 +vram-io+)
+        (poke 251 +vram-io+)
+        (poke 252 +vram-io+)
+        (poke 252 +vram-io+)
+        (poke 253 +vram-io+)
+        (poke 253 +vram-io+)
+        (poke 254 +vram-io+)
+        (poke 254 +vram-io+))
+
+
+      (jsr 'enable-screen)
+      (jmp (mem *origin*)))
 
 
   ;;;; -------------------------------------------------------
@@ -907,7 +937,7 @@ New byte at ~X is ~8,'0,,B (versus ~8,'0,,B" index x y)))
 ;;; restore it to #xFFFF before programming the cart.
     (set-label 'menu-bypass)
     ;; Address to jump to, instead of menu:
-    (dw #xFFFF)                         ; (dw (label 'dac-test))
+    (dw #xFFFF)
 
     (with-label printhex
       "Print accumulator in hex to VRAM port"
