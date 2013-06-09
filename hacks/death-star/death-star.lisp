@@ -7,6 +7,7 @@
 (defvar *path* #.*compile-file-pathname*)
 
 (let ((*context* (make-instance 'basic-context :address #x8000))
+      (*default-pathname-defaults* *path*)
       (vblank-flag (zp 16)))
 
   ;; Entry point, machine init
@@ -138,9 +139,5 @@
   (write-ines "/tmp/deathstar.nes"
               (link *context*)
               :chr (concatenate 'vector
-                                (ichr:encode-chr
-                                 (ichr:read-gif
-                                  (merge-pathnames "chr1.gif" *path*)))
-                                (ichr:encode-chr
-                                 (ichr:read-gif
-                                  (merge-pathnames "chr2.gif" *path*))))))
+                                (ichr:encode-chr (ichr:read-gif "chr1.gif"))
+                                (ichr:encode-chr (ichr:read-gif "chr2.gif")))))
