@@ -1,7 +1,7 @@
 (defpackage ichr
   (:use common-lisp)
   (:import-from asm6502 binary-file)
-  (:export #:decode-chr #:encode-chr
+  (:export #:decode-chr #:encode-chr #:encode-gif
            #:write-gif #:read-gif))
 
 (in-package :ichr)
@@ -91,3 +91,7 @@
                    (loop for ox from 0 below 8 summing (ash (ldb (byte 1 plane) (aref pixels (+ y oy) (+ x (- 7 ox)))) ox))
                    output))))
         finally (return output)))
+
+(defun encode-gif (pathname)
+  "Helper function: Equivalent to (encode-chr (read-gif pathname))"
+  (encode-char (read-gif pathname)))
