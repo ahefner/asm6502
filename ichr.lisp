@@ -94,4 +94,4 @@
 
 (defun encode-gif (pathname)
   "Helper function: Equivalent to (encode-chr (read-gif pathname))"
-  (encode-char (read-gif pathname)))
+  (encode-chr (read-gif pathname)))
