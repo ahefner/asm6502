@@ -6,12 +6,21 @@
 
 (defvar *path* #.*compile-file-pathname*)
 
-(let ((*context* (make-instance 'basic-context :address #x8000))
-      (*default-pathname-defaults* *path*)
-      (vblank-flag (zp 16)))
+(defparameter *mmc3-bank-config* 0
+  "Used for upper bits of writes to $8000 via MMC3-BANK function")
 
-  ;; Entry point, machine init
+(defun mmc3-bank (bank value)
+  (poke (logior *mmc3-bank-config* bank) #x8000)
+  (poke value #x8001))
+
+(let* ((*context* (make-instance 'basic-context :address #x8000))
+       (*default-pathname-defaults* *path*)
+       (vblank-flag (zp 16)))
+
+  ;; --- ENTRY POINT (assemble in last PRG bank) ---
+  (advance-to #xE000)
   (set-label 'reset)
+
   (sei)
   (cld)
   (poke #x40 +papu-irq-ctrl+)           ; Disable APU frame IRQ
@@ -39,6 +48,17 @@
     (as/until :zero
       (dex))
     (dey))
+
+  ;;; MMC3 init
+  (mmc3-bank 0 0)                       ; PPU $0000
+  (mmc3-bank 1 2)                       ; PPU $0800
+  (mmc3-bank 2 15)                      ; PPU $1000
+  (mmc3-bank 3 15)                      ; PPU $1400
+  (mmc3-bank 4 15)                      ; PPU $1800
+  (mmc3-bank 5 15)                      ; PPU $1C00
+  (mmc3-bank 6 0)                       ; CPU $8000
+  (mmc3-bank 7 1)                       ; CPU $A000
+  (poke 0 #xE000)                       ; Disable IRQ
 
   ;;; -- PPU should be ready now.. build the screen contents --
 
@@ -91,7 +111,7 @@
     (inx))
 
   ;; Turn the screen back on
-  (poke #b10000000 +ppu-cr1+)           ; Enable NMI
+  (poke #b10001000 +ppu-cr1+)         ; BG CHR $0000, SPR CHR $1000
   (jsr 'wait-vblank)
   (jsr 'wait-vblank)
 
@@ -100,15 +120,19 @@
   (ppuaddr #x2000)
   (poke #xE8 +ppu-cr2+)                  ; BG visible, SPR off, darken screen
 
-
   (with-label :loop
+
     ;; Even frames:
     (jsr 'wait-vblank)
-    (poke #b10000000 +ppu-cr1+)         ; Background pattern table $0000
+    (mmc3-bank 0 0)                       ; PPU $0000
+    (mmc3-bank 1 2)                       ; PPU $0800
+    (poke #b10001000 +ppu-cr1+)           ; BG CHR $0000, SPR CHR $1000
 
     ;; Odd frames:
     (jsr 'wait-vblank)
-    (poke #b10010000 +ppu-cr1+)         ; Background pattern table $1000
+    (mmc3-bank 0 4)                       ; PPU $0000
+    (mmc3-bank 1 6)                       ; PPU $0800
+    (poke #b10001000 +ppu-cr1+)           ; BG CHR $0000, SPR CHR $1000
 
     (jmp (mem :loop)))
 
@@ -126,18 +150,22 @@
     (inc vblank-flag)
     (rti))
 
-  (procedure brk-handler
+  (procedure irq-handler
+    (poke 0 #xE000)                       ; ACK / Disable IRQ
     (rti))
 
   ;; Interrupt vectors
   (advance-to +nmi-vector+)
   (dw (label 'vblank-handler))
   (dw (label 'reset))
-  (dw (label 'brk-handler))
+  (dw (label 'irq-handler))
 
-  ;; Generate output file:
-  (write-ines "/tmp/deathstar-0.nes"
+  ;; Generate output file (TNROM, 32K PRG / 16K CHR)
+  (write-ines "/tmp/deathstar.nes"
               (link *context*)
+              :mapper 4
               :chr (concatenate 'vector
+                                (ichr:encode-gif "chr1.gif")
+                                (ichr:encode-gif "chr2.gif")
                                 (ichr:encode-gif "chr1.gif")
                                 (ichr:encode-gif "chr2.gif"))))
