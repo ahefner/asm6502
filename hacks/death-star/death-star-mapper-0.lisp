@@ -4,7 +4,7 @@
 
 (in-package :death-star)
 
-(defvar *path* #.*compile-file-pathname*)
+(defvar *path* #.(truename *compile-file-pathname*))
 
 (let ((*context* (make-instance 'basic-context :address #x8000))
       (*default-pathname-defaults* *path*)

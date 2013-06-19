@@ -4,7 +4,7 @@
 
 (in-package :death-star)
 
-(defvar *path* #.*compile-file-pathname*)
+(defvar *path* #.(truename *compile-file-pathname*))
 
 (defparameter *mmc3-bank-config* 0
   "Used for upper bits of writes to $8000 via MMC3-BANK function")
