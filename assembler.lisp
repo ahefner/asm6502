@@ -299,12 +299,12 @@
 (define-addressing-mode imm  (6502-mode-param-8))   ;; Immediate
 (define-addressing-mode zp   (zero-page-mode))      ;; Zero Page
 (define-addressing-mode zpx  (zero-page-mode))      ;; Zero Page, X
-(define-addressing-mode zpy  (zero-page-mode))      ;; Zero Page, Y {for STX/LDX instructions}
-(define-addressing-mode idxi (zero-page-mode))      ;; Indexed Indirect ($aa,X)
-(define-addressing-mode indi (zero-page-mode))      ;; Indirect Indexed ($aa),Y
+(define-addressing-mode zpy  (zero-page-mode))      ;; Zero Page, Y { for STX/LDX instructions }
+(define-addressing-mode idxi (zero-page-mode))      ;; Indexed Indirect ($aa,X)   { table of pointers }
+(define-addressing-mode indi (zero-page-mode))      ;; Indirect Indexed ($aa),Y   { pointer + offset }
 (define-addressing-mode mem  (absolute-mode))       ;; Absolute Address
 (define-addressing-mode abx  (absolute-mode))       ;; Absolute, X
-(define-addressing-mode aby  (absolute-mode))       ;; Absolute, Y {for LDX instruction}
+(define-addressing-mode aby  (absolute-mode))       ;; Absolute, Y { for LDX instruction }
 (define-addressing-mode indirect (absolute-mode))   ;; Indirect
 
 (define-addressing-mode relative (6502-mode-param-8)) ;; PC-Relative offset (for branch instructions)

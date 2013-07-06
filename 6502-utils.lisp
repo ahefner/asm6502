@@ -27,7 +27,7 @@
 
 (defgeneric condition-to-branch (condition)
   (:documentation "Return a function capable of generating a branch to
- the given argument if the condition is not true." ))
+ the given argument if the condition is *NOT* true." ))
 
 (defmethod condition-to-branch ((condition symbol))
   (or
