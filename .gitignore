@@ -4,3 +4,5 @@
 *.fasl
 *.nes
 .#*
+*.dx64fsl
+.DS_Store
