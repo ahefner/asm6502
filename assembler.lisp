@@ -245,7 +245,7 @@
 
 (defun advance-to (offset &optional (fill-byte #xFF))
   (let ((delta (- offset (context-address *context*))))
-    (when (< offset 0)
+    (when (< delta 0)
       (error "Cannot advance to ~X, it is less than the current assembly address (~X)"
 	     offset (context-address *context*)))
     (context-emit *context* (make-array delta :initial-element fill-byte))))
