@@ -74,6 +74,8 @@
        (funcall (condition-to-branch ',condition) (rel ',sym)))))
 
 (defmacro with-label (label &body body)
+  (when (and (listp label) (eql (first label) 'quote))
+    (warn "Quoted label name ~A, probably not what you intended" label))
   `(progn (set-label ',label) ,@body))
 
 (defmacro procedure (name &body body)
