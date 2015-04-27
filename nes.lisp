@@ -104,7 +104,7 @@
     63 64 65 66 67 68 69 71 72 73 74 75 76 77 79 80 81 82 83 84 86 87 88 89
     91 92 93 94 96 97 98 100 101 102 104 105 106 108 109 111 112 113 115 116
     118 119 121 122 124 125 127)
-  "Mapping to compensate for DMC DAC nonlinearity")
+  "Mapping to predistort compensating for DMC DAC nonlinearity")
 
 (defparameter *dac-value-map*
   #(0.0 1.5541384 1.5541384 3.0946667 4.621763 4.621763 6.1356025 7.636356
@@ -143,3 +143,76 @@
                (setf x (* error-feedback
                           (- x (aref *dac-value-map* idx)))))))
          vector)))
+
+;;;; NSF file format
+
+(defconstant +nsf-chip-vrc6+      1)
+(defconstant +nsf-chip-vrc7+      2)
+(defconstant +nsf-chip-fds+       4)
+(defconstant +nsf-chip-mmc5+      8)
+(defconstant +nsf-chip-namco106+ 16)
+(defconstant +nsf-chip-fme-07+   32)
+
+(defun translate-nsf-chips (chip-list)
+  (loop for chip in chip-list summing
+        (etypecase chip
+          ((unsigned-byte 8) chip)
+          (symbol
+           (ecase chip
+             (:vrc6 +nsf-chip-vrc6+)
+             (:vrc7 +nsf-chip-vrc7+)
+             (:fds +nsf-chip-fds+)
+             (:mmc5 +nsf-chip-mmc5+)
+             (:namco106 +nsf-chip-namco106+)
+             (:fme-07 +nsf-chip-fme-07+))))))
+
+(defun emit-nsf-header (num-songs load-addr init-addr play-addr
+                        &key
+                          (song-name "Unnamed")
+                          (artist "Unknown Artist")
+                          (copyright-holder "")
+                          (starting-song 1)
+                          (ntsc-speed (round (/ 1e6 60)))
+                          (bankswitch-init #(0 0 0 0 0 0 0 0))
+                          (mode 0)
+                          (pal-speed (round (/ 1e6 50)))
+                          (chips 0))
+  (assert (= 8 (length bankswitch-init)))
+  (when (listp chips)
+    (setf chips (translate-nsf-chips chips)))
+  (setf mode (cond
+               ((eql mode :ntsc) 0)
+               ((eql mode :pal) 1)
+               ((eql mode :dual) 2)
+               ((typep mode '(unsigned-byte 8)) mode)
+               (t (error "Mode must be a byte value, or one of :NTSC, :PAL, or :DUAL"))))
+  (labels
+      ((string32 (string)
+         (emit
+          (map-into (make-array 32 :element-type '(unsigned-byte 8)
+                                :initial-element 0)
+                    'char-code
+                    string))))
+    (emit (map 'vector 'char-code "NESM"))
+    (db #x1A)
+    (db #x01)                             ; Version
+    (db num-songs)
+    (db starting-song)
+    (dw load-addr)
+    (dw init-addr)
+    (dw play-addr)
+    (string32 song-name)
+    (string32 artist)
+    (string32 copyright-holder)
+    (dw ntsc-speed)
+    (emit bankswitch-init)
+    (dw pal-speed)
+    (db mode)
+    (db chips)
+    (db 0)                              ; Reserved bytes
+    (db 0)
+    (db 0)
+    (db 0)))
+
+
+

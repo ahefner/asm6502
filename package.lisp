@@ -68,4 +68,5 @@
    #:write-ines
    #:ppuaddr
    #:ppuxy
-   #:process-dac-waveform))
+   #:process-dac-waveform
+   #:emit-nsf-header))

@@ -90,6 +90,7 @@
                 ;; I think I can get away without resetting #x8000
                 ;; inside the loop, and I need the cycles.
                 ;; This should be tested on real hardware.
+                ;; Works on PowerPak...
                 ;;(lda (imm 6))           ; Select low bank
                 ;;(sta (mem #x8000))
 
