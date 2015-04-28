@@ -1,3 +1,5 @@
+;;;; Compiling this file will result in an output file /tmp/dollhouse.nsf
+
 (defpackage :music-test
   (:use :common-lisp :6502 :6502-modes :asm6502 :asm6502-utility :asm6502-nes))
 
@@ -248,7 +250,7 @@
 
 ;;;; **********************************************************************
 
-(let* ((*context* (make-instance 'basic-context :address #x8000))
+(let* ((*context* (make-instance 'basic-context :address 0))
 
        ;; Music player
        (mfr-addr #x40)
@@ -263,7 +265,14 @@
        (histogram (make-array 16))
        (music-sequence '())
 
-       (vblank-flag (zp #x96)))
+       #+NIL (vblank-flag (zp #x96)))
+
+  ;;; Build file header
+  (emit-nsf-header 1 :load 'reset 'player-step
+                   :song-name "Dollhouse"
+                   :artist "Andy Hefner <ahefner@gmail.com>")
+  (setf *origin* #x8000)
+  (set-label :load)
 
   ;;; Do register writes for this frame of music. Set MFR to the
   ;;; set of writes for this frame (16*2 bytes).
@@ -329,7 +338,8 @@
          ;; make it feasible without a much more sophisticated player
          ;; routine. Darn.
          (loop with initial-tuning = (* 261.0 (expt 2 1/12))
-               with final-tuning = initial-tuning ;(* initial-tuning (expt 2 -1/12))
+               ;; For fun, uncomment scaling of final tuning..
+               with final-tuning = (* initial-tuning #+NIL (expt 2 1/12))
                with length = (length frames)
                with asm6502::*memoize-promises* = nil
                for frame in frames
@@ -494,13 +504,11 @@
     (sei)                               ; Init CPU
     (cld)
     (poke 0 +ppu-cr1+)
-    (ldx (imm #xFF))
-    (txs)
-    (as/until :negative (bita (mem +ppu-status+))) ; PPU warmup
-    (as/until :negative (bita (mem +ppu-status+)))
-
+    ;;(ldx (imm #xFF))
+    ;;(txs)
+    ;;(as/until :negative (bita (mem +ppu-status+))) ; PPU warmup
+    ;;(as/until :negative (bita (mem +ppu-status+)))
     ;; Init sound hardware..
-
     (poke 0 #x4015)                     ; Silence all channels.
     (poke #x40 #x4017)                  ; IRQ off, 4-step.
     (ldx (imm #xF))                     ; Zero the registers
@@ -512,34 +520,30 @@
 
     (poke #x0F #x4015)                  ; Enable square, triangle, noise.
 
-
     (poke #b10000000 +ppu-cr1+)         ; Enable NMI
-    (jsr 'wait)
 
-
-    (brk) (db 4)
+    ;; Init song playback:
     (pokeword (label 'music-start) mptr)
-    (with-label loop
-      (brk) (db 5)
-      (jsr 'player-step)
-      (jsr 'wait)
-      (jmp (mem 'loop))))
-
-  (procedure brk-handler (rti))
-
-  (procedure nmi-handler
-    (inc vblank-flag)
-    (rti))
-
-  (procedure wait
-    (as/until :not-zero (lda vblank-flag))
-    (poke 0 vblank-flag)
     (rts))
 
-  (advance-to +nmi-vector+)
-  (dw (label 'nmi-handler))
-  (dw (label 'reset))
-  (dw (label 'brk-handler))
+  ;; (procedure brk-handler (rti))
+
+  ;; (procedure nmi-handler
+  ;;   (inc vblank-flag)
+  ;;   (rti))
+
+  ;; (procedure wait
+  ;;   (as/until :not-zero (lda vblank-flag))
+  ;;   (poke 0 vblank-flag)
+  ;;   (rts))
+
+  ;; (advance-to +nmi-vector+)
+  ;; (dw (label 'nmi-handler))
+  ;; (dw (label 'reset))
+  ;; (dw (label 'brk-handler))
 
   ;; Write .NES file
-  (write-ines "/tmp/music.nes" (link *context*)))
+  ;;(write-ines "/tmp/music.nes" (link *context*))
+
+  ;; Write .NSF file
+  (setf (binary-file "/tmp/dollhouse.nsf") (link *context*)))
