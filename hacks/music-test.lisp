@@ -500,22 +500,17 @@
   (print (list :music-size (- *origin* #x8000)))
 
   (procedure reset
-    (sei)                               ; Init CPU
     (cld)
-    (poke 0 +ppu-cr1+)
     ;; Init sound hardware..
     (poke 0 #x4015)                     ; Silence all channels.
-    (poke #x40 #x4017)                  ; IRQ off, 4-step.
-    (ldx (imm #xF))                     ; Zero the registers
+    (ldx (imm #x11))                    ; Zero the registers
     (lda (imm 0))
     (as/until :negative
       (sta (abx #x4000))
       (dex))
-    (poke 0 #x4011)                     ; Hit the DMC DAC, for good measure.
 
     (poke #x0F #x4015)                  ; Enable square, triangle, noise.
 
-    (poke #b10000000 +ppu-cr1+)         ; Enable NMI
 
     ;; Set initial song playback pointer:
     (pokeword (label 'music-start) mptr)
