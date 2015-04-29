@@ -334,11 +334,9 @@
          ;; "infinite modulation" by slowly sliding the tuning
          ;; downward through the course of the music loop via some
          ;; clever abuse of the delay/force mechanism.. but it turns
-         ;; out there's not enough nearly enough space in the ROM to
-         ;; make it feasible without a much more sophisticated player
-         ;; routine. Darn.
+         ;; out there's not enough quite enough space in the ROM to do
+         ;; it well without a more sophisticated player routine. Darn.
          (loop with initial-tuning = (* 261.0 (expt 2 1/12))
-               ;; For fun, uncomment scaling of final tuning..
                with final-tuning = (* initial-tuning #+NIL (expt 2 1/12))
                with length = (length frames)
                with asm6502::*memoize-promises* = nil
@@ -492,9 +490,10 @@
 
     (align 256)
     (with-label music-start
-      ;;(assert (= (length music-sequence) (* 128 (expt 2 log2-song-length)))) ; FIXME
       (unless (= (length music-sequence) (* 128 (expt 2 log2-song-length)))
-        (error "Song length is ~:D, should be ~:D" (length music-sequence) (* 128 (expt 2 log2-song-length))))
+        (error "Song length is ~:D, should be ~:D"
+               (length music-sequence)
+               (* 128 (expt 2 log2-song-length))))
       (print (list :num-unique  (length (remove-duplicates music-sequence))))
       (mapcar #'dw (reverse music-sequence))))
 
@@ -504,10 +503,6 @@
     (sei)                               ; Init CPU
     (cld)
     (poke 0 +ppu-cr1+)
-    ;;(ldx (imm #xFF))
-    ;;(txs)
-    ;;(as/until :negative (bita (mem +ppu-status+))) ; PPU warmup
-    ;;(as/until :negative (bita (mem +ppu-status+)))
     ;; Init sound hardware..
     (poke 0 #x4015)                     ; Silence all channels.
     (poke #x40 #x4017)                  ; IRQ off, 4-step.
@@ -522,28 +517,9 @@
 
     (poke #b10000000 +ppu-cr1+)         ; Enable NMI
 
-    ;; Init song playback:
+    ;; Set initial song playback pointer:
     (pokeword (label 'music-start) mptr)
     (rts))
-
-  ;; (procedure brk-handler (rti))
-
-  ;; (procedure nmi-handler
-  ;;   (inc vblank-flag)
-  ;;   (rti))
-
-  ;; (procedure wait
-  ;;   (as/until :not-zero (lda vblank-flag))
-  ;;   (poke 0 vblank-flag)
-  ;;   (rts))
-
-  ;; (advance-to +nmi-vector+)
-  ;; (dw (label 'nmi-handler))
-  ;; (dw (label 'reset))
-  ;; (dw (label 'brk-handler))
-
-  ;; Write .NES file
-  ;;(write-ines "/tmp/music.nes" (link *context*))
 
   ;; Write .NSF file
   (setf (binary-file "/tmp/dollhouse.nsf") (link *context*)))
