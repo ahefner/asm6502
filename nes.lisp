@@ -187,12 +187,17 @@
                ((typep mode '(unsigned-byte 8)) mode)
                (t (error "Mode must be a byte value, or one of :NTSC, :PAL, or :DUAL"))))
   (labels
-      ((string32 (string)
+      ((null-terminated (string32)
+         (prog1 string32 (setf (aref string32 31) 0)))
+
+       (string32 (string)
          (emit
-          (map-into (make-array 32 :element-type '(unsigned-byte 8)
-                                :initial-element 0)
-                    'char-code
-                    string)))
+          (null-terminated
+           (map-into (make-array 32 :element-type '(unsigned-byte 8)
+                                 :initial-element 0)
+                     'char-code
+                     string))))
+
        (labelify (x) (if (symbolp x) (label x) x)))
     (emit (map 'vector 'char-code "NESM"))
     (db #x1A)
