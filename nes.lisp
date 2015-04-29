@@ -168,9 +168,9 @@
 
 (defun emit-nsf-header (num-songs load-addr init-addr play-addr
                         &key
-                          (song-name "Unnamed")
-                          (artist "Unknown Artist")
-                          (copyright-holder "")
+                          (song-name "<?>")
+                          (artist "<?>")
+                          (copyright-holder "<?>")
                           (starting-song 1)
                           (ntsc-speed (round (/ 1e6 60)))
                           (bankswitch-init #(0 0 0 0 0 0 0 0))
