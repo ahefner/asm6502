@@ -84,6 +84,11 @@
             (list
              (noteon channel (translate-length d) freq)))))
 
+(defun silence-channel (channel)
+  (ecase channel
+    (0 (note 0 1 1 :d 0 :cfg '(:vol 0 :loop t :env nil)))
+    (1 (note 1 1 1 :d 0 :cfg '(:vol 0 :loop t :env nil)))))
+
 (defun tri (length freq &key (d length))
   (check-type d (integer 0 31))
   (segment length
@@ -117,6 +122,8 @@
 
 (defun repeat (n &rest args)
   (apply #'seq (mapcan #'copy-list (loop repeat n collect args))))
+
+(defun rst (length) (segment length nil))
 
 (defparameter *tuning-root* nil)
 
@@ -157,38 +164,8 @@
     (noise 1 1 1 :env nil :loop t :vol volume)
     (noise 1 1 1 :env nil :vol 0))))
 
-(defun rst (length) (segment length nil))
-
 (defun eltmod (i seq) (elt seq (mod i (length seq))))
 (defun clamp (x min max) (max (min x max) min))
-
-(defun arp-test-2 ()
-  (para
-   (apply 'seq
-          (loop for i below 128
-                as time = (* i 3)
-                as freq = (et (eltmod i '(0 3 5 -2 -4)) 12)
-                as vol = (clamp (- 15 (ash time -3))
-                                0
-                                15)
-                as duty = (mod (ash time -2) 4)
-                collect
-                (note 0 3 freq :cfg (list :duty duty :env nil :loop t :vol vol))))
-   (apply 'seq
-          (loop for i below 128
-                as time = (* i 4)
-                as freq = (et (eltmod i '(0 2 5 -2 -4 7)) 12)
-                as vol = (clamp (- 15 (ash time -3))
-                                0
-                                15)
-                as duty = (mod (ash time -2) 4)
-                collect
-                (note 1 4 freq :cfg (list :duty duty :env nil :loop t :vol vol))))))
-
-(defun silence-channel (channel)
-  (ecase channel
-    (0 (note 0 1 1 :d 0 :cfg '(:vol 0 :loop t :env nil)))
-    (1 (note 1 1 1 :d 0 :cfg '(:vol 0 :loop t :env nil)))))
 
 (defun volramp (&optional (start 15) (rate -1/10))
   (lambda (time)

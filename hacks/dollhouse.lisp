@@ -906,7 +906,9 @@
     (align 256)
     (with-label music-start
       (unless (= (length music-sequence) (* 128 (expt 2 log2-song-length)))
-        (error "Song length is ~:D, should be ~:D" (length music-sequence) (* 128 (expt 2 log2-song-length))))
+        (error "Song length is ~:D, should be ~:D"
+               (length music-sequence)
+               (* 128 (expt 2 log2-song-length))))
       (print (list :num-unique  (length (remove-duplicates music-sequence))))
       ;; Write the pointer table:
       (mapcar #'dw (reverse music-sequence))))
