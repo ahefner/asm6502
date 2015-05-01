@@ -8,4 +8,5 @@
                (:file "assembler")
                (:file "cycle-counting")
                (:file "6502-utils")
-               (:file "nes")))
+               (:file "nes")
+               (:file "nesmus")))

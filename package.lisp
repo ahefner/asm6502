@@ -70,3 +70,35 @@
    #:ppuxy
    #:process-dac-waveform
    #:emit-nsf-header))
+
+(defpackage :nesmus
+  (:use :common-lisp :6502 :6502-modes :asm6502 :asm6502-utility :asm6502-nes)
+  (:export
+   #:register
+   #:pad-frame
+   #:segment                            ;?
+   #:translate-freq
+   #:noteon
+   #:note
+   #:silence-channel
+   #:tri
+   #:noise
+   #:para
+   #:measure
+   #:seq
+   #:repeat
+   #:rst
+   #:*tuning-root*
+   #:get-tuning-root
+   #:et
+   #:kick
+   #:snare
+   #:hat
+   #:thump
+   #:shaker
+   #:volramp
+   #:arpeggio
+   #:fat-arp
+   #:funky-arp
+   #:chord
+   ))
