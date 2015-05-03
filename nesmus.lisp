@@ -1,16 +1,16 @@
 (in-package :nesmus)
 
-(defun register (address value) (list value address))
+;;;; --- Music language ---
 
-(defun nop-write ()
-  (register #x0D 0))
+(defun register (address value) (list value address))
+(defun nop-write () (register #x0D 0)) ; Dummy write to unused sound register.
 
 (defun pad-list (list padding desired-length)
   (assert (<= (length list) desired-length))
   (append list (loop repeat (- desired-length (length list)) collect padding)))
 
 (defun pad-frame (frame)
-  (pad-list frame (nop-write) 16))                           ; Dummy write to unused sound register.
+  (pad-list frame (nop-write) 16))
 
 (defun segment (length list)            ; rewrite as map-into?
   (if (< (length list) length)
@@ -18,14 +18,17 @@
       (subseq list 0 length)))
 
 (defun translate-freq (seqlen lbits freq)
-  ;; DELAY doesn't deal with multiple values, thus the duplication here:
-  (values (delay 'reg2 (freq)
-              (ldb (byte 8 0)
-                   (round (/ +ntsc-clock-rate+ seqlen freq))))
-          (delay 'reg3 (freq)
-              (logior (ldb (byte 3 8)
-                           (round (/ +ntsc-clock-rate+ seqlen freq)))
-                      (ash lbits 3)))))
+  (let ((fbits (delay 'fbits (freq) (round (/ +ntsc-clock-rate+ seqlen freq)))))
+   (values (delay 'reg2 (fbits) (ldb (byte 8 0) fbits))
+           (delay 'reg3 (fbits) (logior (ldb (byte 3 8) fbits)
+                                       (ash lbits 3))))))
+
+#+NIL
+(defun translate-freq (seqlen lbits freq)
+  (let ((fbits (round (/ +ntsc-clock-rate+ seqlen freq))))
+   (values (ldb (byte 8 0) fbits)
+           (logior (ldb (byte 3 8) fbits)
+                   (ash lbits 3)))))
 
 (defun noteon (chan lbits freq)
   (multiple-value-bind (base seqlen)
@@ -121,7 +124,7 @@
 
 (defun rst (length) (segment length nil))
 
-(defparameter *tuning-root* nil)
+(defparameter *tuning-root* 276.0)
 
 (defun get-tuning-root ()
   (make-promise :name "Tuning Root"

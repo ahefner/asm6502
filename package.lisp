@@ -14,6 +14,7 @@
   (:use :common-lisp :6502 :6502-modes)
   (:export #:msb #:lsb #:encode-byte #:encode-word
            #:promise :make-promise #:promise-name #:promise-fun #:delay #:force #:forcing
+           #:resolve-tree
            #:binary-file
            #:context-emit #:context-address
            #:context-code-vector #:link

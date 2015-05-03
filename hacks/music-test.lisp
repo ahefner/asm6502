@@ -10,15 +10,6 @@
   (ldx (imm frames))
   (as/until :zero (jsr 'wait) (dex)))
 
-(defun resolve-tree (tree)
-  (etypecase tree
-    (cons (cons (resolve-tree (car tree))
-                (resolve-tree (cdr tree))))
-    (null tree)
-    (integer tree)
-    (promise (force tree))))
-
-
 ;;;; **********************************************************************
 
 (let* ((*context* (make-instance 'basic-context :address 0))
@@ -281,7 +272,6 @@
       (dex))
 
     (poke #x0F #x4015)                  ; Enable square, triangle, noise.
-
 
     ;; Set initial song playback pointer:
     (pokeword (label 'music-start) mptr)

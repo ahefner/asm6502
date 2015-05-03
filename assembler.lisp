@@ -53,6 +53,14 @@
     (make-promise :name ,name :fun (lambda () (forcing ,dependencies ,@body)))
     nil))
 
+(defun resolve-tree (tree)
+  (etypecase tree
+    (cons (cons (resolve-tree (car tree))
+                (resolve-tree (cdr tree))))
+    (null tree)
+    (integer tree)
+    (promise (force tree))))
+
 ;;;; Bits and bytes
 
 (defgeneric msb (x)
