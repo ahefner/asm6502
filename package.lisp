@@ -4,11 +4,14 @@
   (:export :ABX :ABY :INDIRECT :RELATIVE :ZP :ZPX :ZPY :IDXI :INDI :IMM :MEM))
 
 (defpackage :6502
-  (:use)
+  (:use :6502-modes)
   (:export :INY :ASL :PLP :STX :ORA :RTS :PLA :BVS :CPX :DEX :CLD :BCS :CMP :SEC :NOP
            :SBC :TSX :LDA :EOR :LSR :DEC :DEY :BNE :BEQ :INX :TXA :JMP :BRK :ANDA
            :BPL :INC :ROL :JSR :ROR :LDY :PHP :CLV :TXS :PHA :CPY :RTI :SED :TAX :SEI
-           :TYA :BITA :CLC :BCC :STY :BMI :LDX :TAY :BVC :ADC :CLI :STA))
+           :TYA :BITA :CLC :BCC :STY :BMI :LDX :TAY :BVC :ADC :CLI :STA
+           ;; Re-export addressing modes:
+           :ABX :ABY :INDIRECT :RELATIVE :ZP :ZPX :ZPY :IDXI :INDI :IMM :MEM
+           ))
 
 (defpackage :asm6502
   (:use :common-lisp :6502 :6502-modes)

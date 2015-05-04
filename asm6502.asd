@@ -3,6 +3,7 @@
   :description "6502 Assembler, and assorted utilities."
   :author "Andy Hefner <ahefner@gmail.com>"
   :license "MIT-style license"
+  :version "0.1.0"
   :serial t
   :components ((:file "package")
                (:file "assembler")
