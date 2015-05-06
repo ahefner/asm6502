@@ -571,8 +571,7 @@
          (push (gethash frame write-patterns) music-sequence))
 
        (song (frames)
-         ;; music-test.lisp has a sad tale to share.
-         (print (subseq frames 0 10))   ; DEBUG KILLME
+         (subseq frames 0 10)
          (map nil (lambda (frame) (emit-frame (resolve-tree frame))) frames))
 
        ;; Song elements:
