@@ -571,7 +571,6 @@
          (push (gethash frame write-patterns) music-sequence))
 
        (song (frames)
-         (subseq frames 0 10)
          (map nil (lambda (frame) (emit-frame (resolve-tree frame))) frames))
 
        ;; Song elements:
