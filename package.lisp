@@ -83,6 +83,7 @@
    #:segment                            ;?
    #:translate-freq
    #:noteon
+   #:cfg
    #:note
    #:silence-channel
    #:tri
@@ -105,4 +106,5 @@
    #:fat-arp
    #:funky-arp
    #:chord
+   #:define-song
    ))

@@ -211,12 +211,157 @@
 (defun chord (root &rest notes)
   (mapcar (lambda (note) (et root note)) notes))
 
+;;;; Song authoring framework
 
+(defun write-song-data-for-reg-player (song-frames start-label end-label)
+  (let ((write-patterns (make-hash-table :test 'equal))
+        (histogram (make-array 16))
+        (music-sequence nil)
+        (start-address *origin*))
+    (align 16)
+    (map nil (lambda (frame)
+               (unless (<= (length frame) 16)
+                 (error "Too many writes! ~X" (mapcar 'second frame)))
+               (incf (aref histogram (length frame)))
+               (setf frame (pad-frame frame))
+               (unless (gethash frame write-patterns)
+                 (setf (gethash frame write-patterns) *origin*)
+                 ;; Reverse order, because player scans backward!
+                 (dolist (pair (reverse frame)) (apply 'db pair)))
+               (push (gethash frame write-patterns) music-sequence))
+         song-frames)
+    (setf music-sequence (nreverse music-sequence))
+    (align 2)
+    (set-label start-label)
+    (map nil #'dw music-sequence)
+    (set-label end-label)
+    (print (list :pattern-count (hash-table-count write-patterns)
+                 :frame-count (length music-sequence)
+                 :write-count-histogram histogram
+                 :start-address start-address
+                 :seq-start (label start-label)
+                 :seq-end (label end-label)
+                 :sequence music-sequence
+                 :total-size (- *origin* start-address)))))
 
+(defvar *last-audition-function* nil)
 
+;;; TODO: Implement more memory-efficient encoding..
 
+(defmacro define-song (name options)
+  (unless (stringp name)
+    (error "Song name must be a string"))
+  (let* ((package-name (if (symbolp name)
+                           name
+                           (format nil "~A (song)" name)))
+         (package (or (find-package package-name)
+                      (make-package package-name)))
+         (asm-fn-name (intern "ASSEMBLE-IN-CONTEXT" package)))
+   `(eval-when (:compile-toplevel :load-toplevel :execute)
+      (defpackage ,package-name
+        (:use :common-lisp :6502 :asm6502 :asm6502-utility
+              :asm6502-nes :nesmus
+              ,@ (getf options :use-packages)))
+      (in-package ,package-name)
+      (defun ,asm-fn-name ()
+        ())                             ; How I do?
+      (defmacro ,(intern "DEFPATTERN" package) (name (&key parameters audition) &body body)
+        `(progn
+           ;; Tempted to transform the name so it can't collide with
+           ;; CL package..
+           (defun ,name ,parameters
+             (print (list :defining ',name))
+             ,@body)
+           (setf (get ',name 'audition)
+                 (lambda (loop-count)
+                   (print (list :previewing ',name))
+                   (generate-nsf-preview
+                    ',name
+                    (lambda () (,name)
+                            (loop repeat loop-count
+                               nconcing (copy-list (,name ,@audition))))
+                    :break-at-end t))
+                 *last-audition-function*
+                 (prog1 (get ',name 'audition)
+                   (print "Set last audition function.")))))
+      (defun ,(intern "NSF-OUTPUT-FILE" package) (filename)
+        (generate-nsf-preview ,name #',asm-fn-name :filename filename)))))
 
+(defun generate-nsf-preview (name continuation &key filename (break-at-end nil))
+  (setf filename (or filename (format nil "/tmp/nsf-audition/~A.nsf" name)))
+  (let* ((*context* (make-instance 'basic-context))
+         ;; Music player vars
+         (mfr-addr #x40)                ; Frame working pointer (temporary)
+         (mfr-get (indi mfr-addr))
+         (mptr #x42)                    ; Playback pointer
+         (mptr-msb  (zp (1+ mptr)))
+         (mptr-lsb  (zp mptr)))
 
+    (emit-nsf-header 1 #x8000 'init 'play :song-name (format nil "~A" name))
 
+    (setf *origin* #x8000)
 
+    (procedure init
+      (cld)
+      (pokeword (label :seq-start) mptr)
+      (rts))
 
+    (procedure play
+      (cld)
+
+      ;; Transfer *MPTR to MFR and play this frame.
+      (ldy (imm 0))                       ; LSB of new music frame pointer
+      (lda (indi mptr))
+      (sta (zp mfr-addr))
+      (iny)                               ; MSB of new music frame pointer
+      (lda (indi mptr))
+      (sta (zp (1+ mfr-addr)))
+      (jsr 'player-write)                 ; Play frame from MFR.
+
+      ;; Advance music pointer
+      (clc)
+      (inc mptr-lsb)                    ; Requires music is word aligned
+      (inc mptr-lsb)
+      (asif :zero
+        (inc mptr-msb))
+
+      (lda mptr-lsb)
+      (cmp (imm (lsb (label :seq-end))))
+      (asif :equal
+        (lda mptr-msb)
+        (cmp (imm (msb (label :seq-end))))
+        (asif :equal
+          (when break-at-end
+            (brk)
+             (db #xF1)
+             (rts))
+          (pokeword (label :seq-start) mptr)))
+
+      (rts))
+
+    ;;; Do register writes for this frame of music. Set MFR to the
+    ;;; set of writes for this frame (16*2 bytes).
+    (procedure player-write
+      (ldy (imm #x1F))
+      (as/until :negative
+        (lda mfr-get)
+        (tax)
+        (dey)
+        (lda mfr-get)
+        (sta (abx #x4000))
+        (dey))
+      (rts))
+
+    (write-song-data-for-reg-player (funcall continuation) :seq-start :seq-end)
+
+    (ensure-directories-exist filename)
+    (setf (binary-file filename) (link *context*))
+    (format t "~&Wrote output to ~A~%" filename))
+  filename)
+
+(defun play-audition (loop-count player-cmd)
+  (when *last-audition-function*
+    (uiop:run-program
+     (list player-cmd (funcall *last-audition-function* loop-count))
+     :output :interactive
+     :ignore-error-status t)))
