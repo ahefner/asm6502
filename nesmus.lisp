@@ -183,19 +183,17 @@
                  (mute nil)
                  (volume (volramp))
                  (duty (shimmer)))
-  (segment length
-           (para
-            (loop for time below length by rate
-                  for index upfrom 0
-                  append (note channel rate (eltmod index chord)
-                               :d d
-                               :cfg (list :duty (funcall duty time)
-                                          :vol (funcall volume time)
-                                          :env env
-                                          :loop loop)))
-            (seq
-             (rst (1- length))
-             (and mute (silence-channel channel))))))
+  (seq
+   (segment (if mute (1- length) length)
+     (loop for time below length by rate
+        for index upfrom 0
+        append (note channel rate (eltmod index chord)
+                     :d d
+                     :cfg (list :duty (funcall duty time)
+                                :vol (funcall volume time)
+                                :env env
+                                :loop loop))))
+   (and mute (silence-channel channel))))
 
 (defun fat-arp (length chord &rest args)
   (para
@@ -241,7 +239,7 @@
                  :start-address start-address
                  :seq-start (label start-label)
                  :seq-end (label end-label)
-                 :sequence music-sequence
+                 ;;:sequence music-sequence
                  :total-size (- *origin* start-address)))))
 
 (defvar *last-audition-function* nil)
