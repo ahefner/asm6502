@@ -263,7 +263,7 @@
       (in-package ,package-name)
       (defun ,asm-fn-name ()
         ())                             ; How I do?
-      (defmacro ,(intern "DEFPATTERN" package) (name (&key parameters audition) &body body)
+      (defmacro ,(intern "DEFPATTERN" package) (name (&key parameters audition accompany) &body body)
         `(progn
            ;; Tempted to transform the name so it can't collide with
            ;; CL package..
@@ -277,7 +277,10 @@
                     ',name
                     (lambda () (,name)
                             (loop repeat loop-count
-                               nconcing (copy-list (,name ,@audition))))
+                               nconcing (copy-list
+                                         (para
+                                          ,@accompany
+                                          (,name ,@audition)))))
                     :break-at-end t))
                  *last-audition-function*
                  (prog1 (get ',name 'audition)
