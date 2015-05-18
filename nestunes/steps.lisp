@@ -2,10 +2,10 @@
 
 (defpattern bassline-1 ()
   (seq
-   (tri 32 (et  -1) :d 31)
+   (tri 32 (et  -1) :d 31 :vibrato-delay 12)
    (tri 32 (et  -3) :d 31)
 
-   (tri 32 (et  -5) :d 31)
+   (tri 32 (et  -5) :d 31 :vibrato-delay 8)
    (tri 24 (et  -7) :d 23)
    (tri 24 (et  -9) :d 23)
    (tri 16 (et -10) :d 13)
@@ -19,10 +19,10 @@
 
 (defpattern bassline-2 ()
   (seq
-   (tri 32 (et  -5) :d 30)
+   (tri 32 (et  -5) :d 30 :vibrato-delay 12)
    (tri 32 (et  -7) :d 30)
 
-   (tri 32 (et  -9) :d 30)
+   (tri 32 (et  -9) :d 30 :vibrato-delay 8)
    (tri 24 (et -11) :d 21)
    (tri 24 (et -13) :d 21)
    (tri 16 (et  -6) :d 12)
@@ -32,7 +32,7 @@
    (tri 16 (et  -7) :d 12)
    (tri 16 (et  -5) :d 12)
    (tri 16 (et  -4) :d 12)
-   (tri 16 (et  -2) :d 14)))
+   (tri 16 (et  -2) :d 14 :vibrato-delay 0)))
 
 (defpattern bassline-3 ()
   (apply 'seq (mapcar (lambda (pitch duration) (tri 16 (et pitch) :d duration))
