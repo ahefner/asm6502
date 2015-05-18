@@ -54,3 +54,14 @@
    (tri 128 (et  24) :vibrato-delay 24)
    (loop for pitch from -24 upto 24
          collect (tri 32 (et pitch) :vibrato-delay 0))))
+
+(defpattern pulse-vibrato-1 ()
+  (apply 'seq
+   (cfg 0 :env nil :loop t)
+   (note 0 96 (et 0)  :vibrato-delay 24)
+   (note 0 96 (et 12) :vibrato-delay 24)
+   (note 0 96 (et 24) :vibrato-delay 24)
+   (note 0 96 (et 36) :vibrato-delay 24)
+   (note 0 96 (et 48) :vibrato-delay 24)
+   (loop for pitch from -4 upto 48
+        collect (note 0 32 (et pitch) :vibrato-delay 0))))

@@ -100,13 +100,17 @@
                            (if loop #x20 0)
                            vol)))))
 
-(defun note (channel length freq &key (d length) cfg)
+(defun note (channel length freq &key (d length) cfg vibrato-delay)
   (check-type channel (integer 0 1))
   (segment length
-           (para
-            (and cfg (apply 'cfg channel cfg))
-            (list
-             (noteon channel (translate-length d) freq)))))
+    (para
+     (and cfg (apply 'cfg channel cfg))
+     (list
+      (noteon channel (translate-length d) freq))
+     (and vibrato-delay
+          (seq
+           (rst vibrato-delay)
+           (vibrato channel (- length vibrato-delay)))))))
 
 (defun silence-channel (channel)
   (ecase channel
