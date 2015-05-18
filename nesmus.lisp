@@ -89,11 +89,21 @@
     (1 (note 1 1 1 :d 0 :cfg '(:vol 0 :loop t :env nil)))))
 
 (defun tri (length freq &key (d length))
-  (check-type d (integer 0 31))
-  (segment length
-           (list
-            (list* (register #x8 (* d 4))
-                   (noteon 2 1 freq)))))
+  (cond
+    ((<= d 31)
+     (segment length
+              (list
+               (list* (register #x8 (* d 4))
+                      (noteon 2 1 freq)))))
+    (t
+     (segment length
+       (seq
+         (list (list* (register #x8 #x8F)
+                      (noteon 2 1 freq)))
+         (rst (if (= d length)
+                  (- length 2)
+                  (1- d)))
+         (list (list (register #x8 0) (register #xB #x07))))))))
 
 (defun noise (length duration period &key short loop (env t) (vol 15))
   (check-type duration (integer 0 31))
