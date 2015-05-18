@@ -93,6 +93,7 @@
      :key (lambda (p) (abs (- (second p) length)))))))
 
 (defun cfg (channel &key (duty 2) (vol 15) (env t) (loop nil))
+  (check-type duty (integer 0 3))
   (list
    (list (register (* channel 4)
                    (logior (ash duty 6)
