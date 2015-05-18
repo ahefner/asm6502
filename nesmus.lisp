@@ -18,7 +18,8 @@
       (subseq list 0 length)))
 
 (defun translate-freq (seqlen lbits freq)
-  (let ((fbits (delay 'fbits (freq) (round (/ +ntsc-clock-rate+ seqlen freq)))))
+  (let ((fbits (delay 'fbits (freq)
+                 (round (/ +ntsc-clock-rate+ seqlen freq)))))
    (values (delay 'reg2 (fbits) (ldb (byte 8 0) fbits))
            (delay 'reg3 (fbits) (logior (ldb (byte 3 8) fbits)
                                        (ash lbits 3))))))
@@ -30,6 +31,9 @@
            (logior (ldb (byte 3 8) fbits)
                    (ash lbits 3)))))
 
+(defvar *channel-timer* (vector nil nil nil)
+  "Last value written to channel timer counts. Used for vibrato effect.")
+
 (defun noteon (chan lbits freq)
   (multiple-value-bind (base seqlen)
       (ecase chan
@@ -37,10 +41,31 @@
         (1 (values 4 8))
         (2 (values 8 32)))
     (multiple-value-bind (v2 v3) (translate-freq seqlen lbits freq)
+      (setf (aref *channel-timer* chan) (logior (ash (logand 7 v3) 8) v2))
       (list
        (register (+ 2 base) v2)
        (register (+ 3 base) v3)))))
 
+(defun vibrato (channel length)
+  (check-type channel (integer 0 2))
+  (when (null (aref *channel-timer* channel))
+    (error "Cannot use vibrato on channel ~A, last note frequency is unknown" channel))
+  (let* ((timer-count (aref *channel-timer* channel))
+         (lsb (logand timer-count #xFF))
+         (reg (+ 2 (* channel 4))))
+    (unless (<= 2 lsb 253)
+      (warn "Vibrato will be detuned at this pitch..."))
+    (segment length
+      (repeat (* 8 (ceiling length 8))
+        (seq
+         (list (list (register reg (clamp (+ lsb +1) 0 255))))
+         (list (list (register reg (clamp (+ lsb +2) 0 255))))
+         (list (list (register reg (clamp (+ lsb +1) 0 255))))
+         (list (list (register reg (clamp (+ lsb  0) 0 255))))
+         (list (list (register reg (clamp (+ lsb -1) 0 255))))
+         (list (list (register reg (clamp (+ lsb -2) 0 255))))
+         (list (list (register reg (clamp (+ lsb -1) 0 255))))
+         (list (list (register reg (clamp (+ lsb  0) 0 255)))))))))
 
 (defun translate-length (length)
   "Find closest match to load the length counter."
@@ -88,22 +113,28 @@
     (0 (note 0 1 1 :d 0 :cfg '(:vol 0 :loop t :env nil)))
     (1 (note 1 1 1 :d 0 :cfg '(:vol 0 :loop t :env nil)))))
 
-(defun tri (length freq &key (d length))
-  (cond
-    ((<= d 31)
-     (segment length
-              (list
-               (list* (register #x8 (* d 4))
-                      (noteon 2 1 freq)))))
-    (t
-     (segment length
-       (seq
-         (list (list* (register #x8 #x8F)
-                      (noteon 2 1 freq)))
-         (rst (if (= d length)
-                  (- length 2)
-                  (1- d)))
-         (list (list (register #x8 0) (register #xB #x07))))))))
+(defun tri (length freq &key (d length) vibrato-delay)
+  (para
+   (cond
+     ((<= d 31)
+      (segment length
+               (list
+                (list* (register #x8 (* d 4))
+                       (noteon 2 1 freq)))))
+     (t
+      (segment length
+               (seq
+                (list (list* (register #x8 #x8F)
+                             (noteon 2 1 freq)))
+                (rst (if (= d length)
+                         (- length 2)
+                         (1- d)))
+                (list (list (register #x8 0) (register #xB #x07)))))))
+   (and vibrato-delay
+    (seq
+     (rst vibrato-delay)
+     (segment (max 0 (- length vibrato-delay))
+              (vibrato 2 (- length vibrato-delay)))))))
 
 (defun noise (length duration period &key short loop (env t) (vol 15))
   (check-type duration (integer 0 31))
@@ -256,6 +287,10 @@
 
 ;;; TODO: Implement more memory-efficient encoding..
 
+(defparameter *defpattern-bindings*
+  (list
+   (list '*channel-timer* (lambda () (vector nil nil nil)))))
+
 (defmacro define-song (name options)
   (unless (stringp name)
     (error "Song name must be a string"))
@@ -279,7 +314,11 @@
            ;; CL package..
            (defun ,name ,parameters
              (print (list :defining ',name))
-             ,@body)
+             (progv
+                 (mapcar 'first *defpattern-bindings*)
+                 (mapcar (lambda (spec) (funcall (second spec)))
+                         *defpattern-bindings*)
+               ,@body))
            (setf (get ',name 'audition)
                  (lambda (loop-count)
                    (print (list :previewing ',name))

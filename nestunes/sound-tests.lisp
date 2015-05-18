@@ -43,3 +43,14 @@
      (list (list (register 10 #xCC)))
      (list (list (register 10 #xCD)))
      (list (list (register 10 #xCC)))))))
+
+;;; Test new vibrato feature of TRI function
+(defpattern triangle-vibrato-1 ()
+  (apply 'seq
+   (tri 128 (et -24) :vibrato-delay 24)
+   (tri 128 (et -12) :vibrato-delay 24)
+   (tri 128 (et   0) :vibrato-delay 24)
+   (tri 128 (et  12) :vibrato-delay 24)
+   (tri 128 (et  24) :vibrato-delay 24)
+   (loop for pitch from -24 upto 24
+         collect (tri 32 (et pitch) :vibrato-delay 0))))
