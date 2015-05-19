@@ -1,6 +1,6 @@
 (nesmus:define-song "Steps" ())
 
-(defpattern bassline-1 ()
+(defpattern bassline-1A ()
   (seq
    (tri 32 (et  -1) :d 31 :vibrato-delay 12)
    (tri 32 (et  -3) :d 31)
@@ -17,7 +17,7 @@
    (tri 16 (et  -6) :d 13)
    (tri 16 (et  -3) :d 13)))
 
-(defpattern bassline-2 ()
+(defpattern bassline-1B ()
   (seq
    (tri 32 (et  -5) :d 30 :vibrato-delay 12)
    (tri 32 (et  -7) :d 30)
@@ -34,28 +34,28 @@
    (tri 16 (et  -4) :d 12)
    (tri 16 (et  -2) :d 14 :vibrato-delay 0)))
 
-(defpattern bassline-3 ()
+(defpattern bassline-1C ()
   (apply 'seq (mapcar (lambda (pitch duration) (tri 16 (et pitch) :d duration))
                       '(-9  -2 -5  -9
                         -3 -10 -8  -7
                         -5  -3 -1  -5
                         -8 -11 -6 -14)
-                      '(13 13 13 14  13 13 13 14  13 13 13 14  13 13 13 15))))
+                      '(11 11 11 12  11 11 11 12  11 11 11 12  11 11 11 13))))
 
-(defpattern bassline-4 ()
+(defpattern bassline-1D ()
   (apply 'seq (mapcar (lambda (pitch duration) (tri 16 (et pitch) :d duration))
                       '(-13 -6 -1 -6
                         -7 -5 -3 -2
                         -9 -2 -5 -8
                         -11 -8 -6 -14)
-                      '(13 13 13 14  13 13 13 14  13 13 13 14  13 13 13 15))))
+                      '(11 11 11 12  11 11 11 12  11 11 11 12  11 11 11 13))))
 
-(defpattern bassline-seq ()
+(defpattern bassline-seq-1 ()
   (seq
-   (bassline-1)
-   (bassline-2)
-   (bassline-3)
-   (bassline-4)))
+   (bassline-1A)
+   (bassline-1B)
+   (bassline-1C)
+   (bassline-1D)))
 
 (defun bup (note length &key (d (1- length)) vibrato-delay)
   (para
@@ -68,7 +68,7 @@
               nil
               (list (register 1 0))))))
 
-(defpattern sax-1 (:accompany ((bassline-1)))
+(defpattern sax-1A (:accompany ((bassline-1)))
   (seq (bup 18 32 :vibrato-delay 24)
        (note 0 32 (et 14) :vibrato-delay 0)
        (bup 11 32)
@@ -77,7 +77,7 @@
        (bup 11 24)
        (note 0 (+ 8 32) (et 9) :vibrato-delay 8)))
 
-(defpattern sax-234 (:accompany ((seq (bassline-2)
+(defpattern sax-1BCD (:accompany ((seq (bassline-2)
                                       (bassline-3)
                                       (bassline-4))))
   (seq (bup 14 32)
@@ -110,7 +110,7 @@
             :volume (volramp volume decay)
             :mute mute))
 
-(defpattern chords-1 (:accompany ((bassline-1) (sax-1)))
+(defpattern chords-1A (:accompany ((bassline-1) (sax-1)))
   (segment 256
     (seq
       (chord 32 7 -0.2 nil  10  6  3  -1  -6 -13)
@@ -121,10 +121,10 @@
       (chord 24 6 -0.3 nil   4  0 -5  -8 -15)
       (chord 24 7 -0.3 t     6  2 -3 -10))))
 
-(defpattern chords-234 (:accompany ((seq (bassline-2)
-                                         (bassline-3)
-                                         (bassline-4))
-                                    (sax-234)))
+(defpattern chords-1BCD (:accompany ((seq (bassline-2)
+                                          (bassline-3)
+                                          (bassline-4))
+                                       (sax-234)))
   (seq
    (chord 32 7 -0.2 nil   9  6  2  -3  -8 -17)
    (chord 32 6 -0.2 nil   7  2  0  -4 -10 -19)
@@ -151,12 +151,16 @@
    (chord 24 7 -0.3 t    10  6  4  1  -6)
    (rst 16)))
 
-(defpattern song ()
-  (seq (para (bassline-1)
-             (sax-1)
-             (chords-1))
-       (para (sax-234)
-             (seq (bassline-2)
-                  (bassline-3)
-                  (bassline-4))
-             (chords-234))))
+(defpattern section-1 ()
+  (seq (para (bassline-1A)
+             (sax-1A)
+             (chords-1A))
+       (para (sax-1BCD)
+             (seq (bassline-1B)
+                  (bassline-1C)
+                  (bassline-1D))
+             (chords-1BCD))))
+
+
+;;; ------------------------------------------------------------
+
