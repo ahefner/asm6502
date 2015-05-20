@@ -68,7 +68,7 @@
               nil
               (list (register 1 0))))))
 
-(defpattern sax-1A (:accompany ((bassline-1)))
+(defpattern sax-1A (:accompany ((bassline-1A)))
   (seq (bup 18 32 :vibrato-delay 24)
        (note 0 32 (et 14) :vibrato-delay 0)
        (bup 11 32)
@@ -77,9 +77,9 @@
        (bup 11 24)
        (note 0 (+ 8 32) (et 9) :vibrato-delay 8)))
 
-(defpattern sax-1BCD (:accompany ((seq (bassline-2)
-                                      (bassline-3)
-                                      (bassline-4))))
+(defpattern sax-1BCD (:accompany ((seq (bassline-1B)
+                                      (bassline-1C)
+                                      (bassline-1D))))
   (seq (bup 14 32)
        (note 0 32 (et 11) :vibrato-delay 8)
        (bup 7 32 :vibrato-delay 24)
@@ -110,7 +110,7 @@
             :volume (volramp volume decay)
             :mute mute))
 
-(defpattern chords-1A (:accompany ((bassline-1) (sax-1)))
+(defpattern chords-1A (:accompany ((bassline-1A) (sax-1A)))
   (segment 256
     (seq
       (chord 32 7 -0.2 nil  10  6  3  -1  -6 -13)
@@ -121,10 +121,10 @@
       (chord 24 6 -0.3 nil   4  0 -5  -8 -15)
       (chord 24 7 -0.3 t     6  2 -3 -10))))
 
-(defpattern chords-1BCD (:accompany ((seq (bassline-2)
-                                          (bassline-3)
-                                          (bassline-4))
-                                       (sax-234)))
+(defpattern chords-1BCD (:accompany ((seq (bassline-1B)
+                                          (bassline-1C)
+                                          (bassline-1D))
+                                       (sax-1BCD)))
   (seq
    (chord 32 7 -0.2 nil   9  6  2  -3  -8 -17)
    (chord 32 6 -0.2 nil   7  2  0  -4 -10 -19)
