@@ -17,7 +17,7 @@
 
 (defun pokeword (value address)
   (poke (lsb value) address)
-  (poke (msb value) (delay :pokeword-addr-msb (address)' (1+ address))))
+  (poke (msb value) (delay :pokeword-addr-msb (address) (1+ address))))
 
 ;;;; Control structures
 
