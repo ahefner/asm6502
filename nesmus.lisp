@@ -181,6 +181,7 @@
                                   :path "Tuning root not set.")))))
 
 (defun et (&rest args)
+  (assert (not (null args)))
   (delay 'et ((tuning (get-tuning-root)))
     (* tuning (expt 2 (/ (apply '+ args) 12)))))
 
