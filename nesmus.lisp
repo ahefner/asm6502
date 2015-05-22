@@ -308,12 +308,11 @@
          (asm-fn-name (intern "ASSEMBLE-IN-CONTEXT" package)))
    `(eval-when (:compile-toplevel :load-toplevel :execute)
       (defpackage ,package-name
-        (:use :common-lisp :6502 :asm6502 :asm6502-utility
-              :asm6502-nes :nesmus
+        (:use :common-lisp
+              #|:6502 :asm6502 :asm6502-utility :asm6502-nes|#
+              :nesmus
               ,@ (getf options :use-packages)))
       (in-package ,package-name)
-      (defun ,asm-fn-name ()
-        ())                             ; How I do?
       (defmacro ,(intern "DEFPATTERN" package) (name (&key parameters audition accompany) &body body)
         `(progn
            ;; Tempted to transform the name so it can't collide with
