@@ -329,12 +329,11 @@
                    (print (list :previewing ',name))
                    (generate-nsf-preview
                     ',name
-                    (lambda () (,name)
-                            (loop repeat loop-count
-                               nconcing (copy-list
-                                         (para
-                                          ,@accompany
-                                          (,name ,@audition)))))
+                    (lambda ()
+                      (repeat loop-count
+                              (para
+                               ,@accompany
+                               (,name ,@audition))))
                     :break-at-end t))
                  *last-audition-function*
                  (prog1 (get ',name 'audition)
