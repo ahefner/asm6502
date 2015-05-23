@@ -298,7 +298,7 @@
   (list
    (list '*channel-timer* (lambda () (vector nil nil nil)))))
 
-(defmacro define-song (name options)
+(defmacro define-song (name (&key use-packages artist (copyright-holder artist)))
   (unless (stringp name)
     (error "Song name must be a string"))
   (let* ((package-name (if (symbolp name)
@@ -312,8 +312,11 @@
         (:use :common-lisp
               #|:6502 :asm6502 :asm6502-utility :asm6502-nes|#
               :nesmus
-              ,@ (getf options :use-packages)))
+              ,@use-packages))
       (in-package ,package-name)
+      (defparameter ,(intern "*SONG-NAME*" package) ,name)
+      (defparameter ,(intern "*ARTIST*" package) ,artist)
+      (defparameter ,(intern "*COPYRIGHT-HOLDER*" package) ,copyright-holder)
       (defmacro ,(intern "DEFPATTERN" package) (name (&key parameters audition accompany) &body body)
         `(progn
            ;; Tempted to transform the name so it can't collide with
@@ -324,7 +327,7 @@
                  (mapcar 'first *defpattern-bindings*)
                  (mapcar (lambda (spec) (funcall (second spec)))
                          *defpattern-bindings*)
-               ,@body))
+               (seq ,@body)))
            (setf (get ',name 'audition)
                  (lambda (loop-count)
                    (print (list :previewing ',name))
