@@ -168,9 +168,9 @@
 
 (defun emit-nsf-header (num-songs load-addr init-addr play-addr
                         &key
-                          (song-name "<?>")
-                          (artist "<?>")
-                          (copyright-holder "<?>")
+                          (song-name nil)
+                          (artist nil)
+                          (copyright-holder nil)
                           (starting-song 1)
                           (ntsc-speed 16639)
                           (bankswitch-init #(0 0 0 0 0 0 0 0))
@@ -207,9 +207,9 @@
     (dw (labelify load-addr))
     (dw (labelify init-addr))
     (dw (labelify play-addr))
-    (string32 song-name)
-    (string32 artist)
-    (string32 copyright-holder)
+    (string32 (or song-name "<?>"))
+    (string32 (or artist "<?>"))
+    (string32 (or copyright-holder "<?>"))
     (dw ntsc-speed)
     (emit bankswitch-init)
     (dw pal-speed)
