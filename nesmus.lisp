@@ -230,6 +230,7 @@
                  (mute nil)
                  (volume (volramp))
                  (duty (shimmer)))
+  (assert (not (null chord)))
   (seq
    (segment (if mute (1- length) length)
      (loop for time below length by rate
