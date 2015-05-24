@@ -9,7 +9,7 @@
   (tri 24 (et  -9) :d 23)
   (tri 16 (et -10) :d 13)
   (tri 16 (et -12) :d 13)
-  (tri 16 (et -13) :d 13)
+  (tri 16 (et -14) :d 13)
 
   (tri 16 (et  -3) :d 13)
   (tri 16 (et  -5) :d 15)
