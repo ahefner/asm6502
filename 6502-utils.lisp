@@ -19,6 +19,12 @@
   (poke (lsb value) address)
   (poke (msb value) (delay :pokeword-addr-msb (address) (1+ address))))
 
+(defun pushword (value)
+  (lda (imm (msb value)))
+  (pha)
+  (lda (imm (lsb value)))
+  (pha))
+
 ;;;; Control structures
 
 ;;; Assemble an if-then-else construct. The 'branch-compiler' is invoked

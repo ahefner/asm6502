@@ -28,7 +28,7 @@
 
 (defpackage :asm6502-utility
   (:use :common-lisp :6502 :6502-modes :asm6502)
-  (:export #:+nmi-vector+ #:+reset-vector+ #:+irq-vector+ #:poke #:pokeword
+  (:export #:+nmi-vector+ #:+reset-vector+ #:+irq-vector+ #:poke #:pokeword #:pushword
            #:emit-delay #:timed-section
            #:asif #:condition-to-branch #:with-label #:as/until #:procedure))
 
