@@ -345,26 +345,37 @@
       (defun ,(intern "NSF-OUTPUT-FILE" package) (filename)
         (generate-nsf-preview ,name #',asm-fn-name :filename filename)))))
 
-(defun generate-nsf-preview (name continuation &key filename (break-at-end nil))
-  (setf filename (or filename (format nil "/tmp/nsf-audition/~A.nsf" name)))
-  (let* ((*context* (make-instance 'basic-context))
+(defun emit-fixed-cycle-player (context var-base)
+  "Emit fixed-cycle player routine. Requires VAR-BASE specifies 6 bytes of adjacent zeropage storage."
+  (check-type var-base (integer 0 250))
+  (let* ((*context* context)
          ;; Music player vars
-         (mfr-addr #x40)                ; Frame working pointer (temporary)
+         (mfr-addr (+ var-base 0))              ; Frame working pointer (temporary)
          (mfr-get (indi mfr-addr))
-         (mptr #x42)                    ; Playback pointer
+         (mptr (+ var-base 2))                       ; Playback pointer
          (mptr-msb  (zp (1+ mptr)))
-         (mptr-lsb  (zp mptr)))
+         (mptr-lsb  (zp mptr))
+         (endptr (+ var-base 4)))
 
-    (emit-nsf-header 1 #x8000 'init 'play :song-name (format nil "~A" name))
+    (procedure player-load
+      (pla)
+      (clc)
+      (adc (imm 1))
+      (sta (zp mfr-addr))
+      (pla)                             ; Stash return address in MFR
+      (adc (imm 0))
+      (sta (zp (1+ mfr-addr)))
+      (pla)
+      (sta mptr-lsb)
+      (pla)
+      (sta mptr-msb)
+      (pla)
+      (sta (zp endptr))
+      (pla)
+      (sta (zp (1+ endptr)))
+      (jmp (indirect mfr-addr)))
 
-    (setf *origin* #x8000)
-
-    (procedure init
-      (cld)
-      (pokeword (label :seq-start) mptr)
-      (rts))
-
-    (procedure play
+    (procedure play-frame
       (cld)
 
       ;; Transfer *MPTR to MFR and play this frame.
@@ -383,13 +394,14 @@
       (asif :zero
         (inc mptr-msb))
 
+      ;; FIXME: Don't use these labels here.. that's cheating..
       (lda mptr-lsb)
       (cmp (imm (lsb (label :seq-end))))
       (asif :equal
         (lda mptr-msb)
         (cmp (imm (msb (label :seq-end))))
         (asif :equal
-          (when break-at-end
+          (when t ;;break-at-end
             (brk)
              (db #xF1)
              (rts))
@@ -408,6 +420,26 @@
         (lda mfr-get)
         (sta (abx #x4000))
         (dey))
+      (rts))))
+
+(defun generate-nsf-preview (name continuation &key filename (break-at-end nil))
+  (setf filename (or filename (format nil "/tmp/nsf-audition/~A.nsf" name)))
+  (let ((*context* (make-instance 'basic-context)))
+
+    (emit-nsf-header 1 #x8000 'init 'play-frame
+                     :song-name (format nil "~A" name))
+
+    (setf *origin* #x8000)
+
+    (emit-fixed-cycle-player *context* #x80)
+
+    (procedure init
+      (cld)
+      ;;(pokeword (label :seq-start) mptr)
+      (pushword (label :seq-end))
+      (pushword (label :seq-start))
+      (jsr 'player-load)
+      
       (rts))
 
     (write-song-data-for-reg-player (funcall continuation) :seq-start :seq-end)
