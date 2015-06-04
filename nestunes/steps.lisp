@@ -241,7 +241,7 @@
   (note 0  8 (et 16))
   (note 0  8 (et 20))
   (note 0  8 (et 23))
-  (note 0 24 (et 23) :vibrato-delay 5)
+  (note 0 24 (et 22) :vibrato-delay 5)
   (note 0  8 (et 19)))
 
 (defpattern chords-2A (#|:accompany ((bassline-2A) (sax-2A))|#)
