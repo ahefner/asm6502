@@ -408,19 +408,22 @@
   (rst 16)
   (chord 48 7 -0.2 t  6 3 -2 -6 -13))
 
-(defpattern chords-3C (:accompany ((bassline-3C)))
+(defpattern chords-3C (:accompany ((bassline-3C) (sax-3C)))
   (rst 8)
   (chord (+ 8 6) 7 -0.2 t  7 3 0 -4 -7)
   (rst (- 16 6))
   (chord 32 7 -0.2 t  7 2 0 -3 -7)
+
   (chord 16 7 -0.2 t  2 -2 -9 -14)
   (rst 16)
   (chord 16 7 -0.2 t  3 -2 -5 -14)
   (rst 16)
-  (rst 16)
-  (chord 16 7 -0.2 t  4 0 -5 -8)
-  (rst 16)
+
+  (rst 8)
+  (chord (+ 8 6) 7 -0.2 t  4 0 -5 -8)
+  (rst (- 16 6))
   (chord 32 8 -0.2 t  14 10 6 0 -6)
+
   (chord (+ 16 8) 7 -0.2 t  9 6 2 -1 -5 -10)
   (rst (- 48 8)))
 
