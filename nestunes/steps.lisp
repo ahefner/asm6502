@@ -295,6 +295,180 @@
 
 ;;; ------------------------------------------------------------
 
+(defun walking-bassline (notes &key (note-length 16))
+  (assert (not (zerop note-length)))
+  (apply
+   'seq
+   (mapcar (lambda (x)
+             (etypecase x
+               (integer (tri note-length (et x) :d (max 1 (round (* 0.7 note-length)))))
+               (list (walking-bassline x :note-length (ash note-length -1)))))
+           notes)))
+
+(defpattern bassline-3A ()
+  (walking-bassline
+   '(-13 -1  -3 -6
+     -10 -5  -7 -2
+      -9 -2  -5 -9
+      -8 -3 -10 -3)))
+
+(defpattern bassline-3B ()
+  (walking-bassline
+   '(-5 -10 -14 -2
+     -9  -2  -1 -6
+     -1  -6  -2 -6)))
+
+(defpattern bassline-3C ()
+  (walking-bassline
+   '(-7 -5 -4 -2
+     -9 -2 -5 -9
+     -8 (-3 -8) -10 -3
+     -5 -10 -14 -10)))
+
+(defpattern bassline-3D ()
+  (walking-bassline
+   '(-11  -8  -6 -14
+     -13  -6  -2  -1
+      -6  -5  -4  -2
+      -9 -10 -12 -14
+     -11  -8  -6 -11)))                 ; sounds weird...
+
+(defun fast-line (notes)
+  (apply
+   'seq
+   (mapcar
+    (lambda (length pitch)
+      (etypecase pitch
+        (integer (note 0 length (et pitch) :cfg *sax-config*))
+        (null (rst length))))
+    '#1=(9 7 . #1#)
+    notes)))
+
+(defpattern sax-3A (:accompany ((bassline-3A)))
+  (fast-line
+   '(18 15 11  8 14 16 18 21
+     19 14 11  7 12  8  7  5
+      3  5  7  8 11 12 14 17
+     16 12  9  7  6 15 14 12)))
+
+(defpattern sax-3B (:accompany ((bassline-3B)))
+  (fast-line
+   '(11 14 19 23 14 17 20 24
+     15 17 19 22 16 20 23 25))
+  (bup 22 16)
+  (note 0 8 (et 20))
+  (note 0 24 (et 18) :vibrato-delay 4)
+  (rst 16))
+
+(defpattern sax-3C (:accompany ((bassline-3C)))
+  (fast-line
+   '(22 21 20 19 17 15 14 12
+     10 20 19 14 17 15 14 17
+     16 12  9  4  7  4  6 15
+     14 12 11  9  7  9 11 14)))
+
+(defpattern sax-3D (:accompany ((bassline-3D)))
+  (fast-line
+   '(15 13 11 10 nil 6 8 9
+     11 13 15 18 22 21 20 19))
+  (note 0 (+ 16 6) (et 17) :vibrato-delay 6)
+  (rst (- 16 6))
+  (fast-line '(19 18 17 14))
+  (fast-line '(15 17 nil 22 27 22 nil nil))
+  (rst 16)
+  (note 0 5 (et 22))
+  (note 0 5 (et 23))
+  (note 0 (+ 6 24) (et 22))
+  (note 0 8 (et 6)))
+
+
+
+(defpattern chords-3A (:accompany ((sax-3A) (bassline-3A)))
+  (chord 16 7 -0.2 t  13 10 6 3 -6 -13)
+  (rst 16)
+  (chord 16 7 -0.2 t  11 6 4 0 -6 -15)
+  (rst 16)
+  (rst 8)                               ; fixme, there's a bass note here
+  (chord (+ 8 6) 6 -0.3 t  9 6 2 -8 -13)
+  (rst (- 16 6))
+  (chord 32 6 -0.2 t  7 2 0 -4 -7 14)
+  (chord 16 6 -0.2 t  10 7 2 -2 -9)
+  (rst (+ 16 32))
+  (chord 16 7 -0.2 t -8 4 0 -5)
+  (rst 16)
+  (chord 16 7 -0.2 t 14 10 5 0 -6)
+  (rst 16))
+
+(defpattern chords-3B (:accompany ((sax-3B) (bassline-3B)))
+  (chord 16 7 -0.2 t  9 6 2 -1)
+  (rst 16)
+  (chord 32 7 -0.2 t  7 2 0 -4 -10 -21)
+  (chord 32 7 -0.2 t  2 -2 -5 -14 -21)
+  (chord 32 7 -0.2 t  4 -18)
+  (rst 16)
+  (chord 48 7 -0.2 t  6 3 -2 -6 -13))
+
+(defpattern chords-3C (:accompany ((bassline-3C)))
+  (rst 8)
+  (chord (+ 8 6) 7 -0.2 t  7 3 0 -4 -7)
+  (rst (- 16 6))
+  (chord 32 7 -0.2 t  7 2 0 -3 -7)
+  (chord 16 7 -0.2 t  2 -2 -9 -14)
+  (rst 16)
+  (chord 16 7 -0.2 t  3 -2 -5 -14)
+  (rst 16)
+  (rst 16)
+  (chord 16 7 -0.2 t  4 0 -5 -8)
+  (rst 16)
+  (chord 32 8 -0.2 t  14 10 6 0 -6)
+  (chord (+ 16 8) 7 -0.2 t  9 6 2 -1 -5 -10)
+  (rst (- 48 8)))
+
+(defpattern chords-3D (:accompany ((bassline-3D) (sax-3D)))
+  (rst 8)
+  (chord (+ 8 6) 7 -0.2 t  13 8 4 1 -11)
+  (rst (- 16 6))
+  (chord 32 7 -0.2 t  10 6 4 -2 -6)
+
+  (chord 16 7 -0.2 t  13 6 3 -6 -13)
+  (rst 16)
+  (chord 16 7 -0.2 t  10 6 3 -6 -13)
+  (rst 16)
+
+  (rst 8)
+  (chord (+ 8 6) 7 -0.2 t  7 3 0 -4 -9)
+  (rst (- 16 6))
+  (chord 16 7 -0.2 t  10 5 2 0 -3)
+  (rst 16)                              ; skipping random bass note cuz who gives a shit..
+  (chord 16 7 -0.2 t  7 2 -2 -9)
+  (rst 16)
+  (chord 16 7 -0.2 t  5 2 -2 -12)
+  (rst 16)
+
+  (rst 8)
+  (chord (+ 8 6) 7 -0.2 t  11 8 4 1 -11)
+  (rst (- 16 6))
+  (chord 16 7 -0.2 t  13 10 6 4 -2 -6)
+  (rst 16))
+
+
+(defpattern section-3 ()
+  (para (bassline-3A)
+        (sax-3A)
+        (chords-3A))
+  (para (bassline-3B)
+        (sax-3B)
+        (chords-3B))
+  (para (bassline-3C)
+        (sax-3C)
+        (chords-3C))
+  (para (bassline-3D)
+        (sax-3D)
+        (chords-3D)))
+
+;;; ------------------------------------------------------------
+
 (defpattern song ()
   (section-1)
-  (section-2))
+  (section-2)
+  (section-3))
