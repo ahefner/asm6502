@@ -442,7 +442,7 @@
   (chord (+ 8 6) 7 -0.2 t  7 3 0 -4 -9)
   (rst (- 16 6))
   (chord 16 7 -0.2 t  10 5 2 0 -3)
-  (rst 16)                              ; skipping random bass note cuz who gives a shit..
+  (rst 16)                              ; skipped random bass note
   (chord 16 7 -0.2 t  7 2 -2 -9)
   (rst 16)
   (chord 16 7 -0.2 t  5 2 -2 -12)
@@ -468,6 +468,42 @@
   (para (bassline-3D)
         (sax-3D)
         (chords-3D)))
+
+;;; ------------------------------------------------------------
+
+(defpattern bassline-4A ()
+  (walking-bassline
+   '(-13 -1 -3 -6
+     -10 -13 -14 -7
+     -14 -9 -5 -2
+     -3 -5 -6 -8)))
+
+(defpattern bassline-4B ()
+  (walking-bassline
+   '(-10 -13 -14 -2
+     -9 -2 -6 -11
+     -13 -6 -2 -1
+     -7 -5 -4 -2)))
+
+(defpattern bassline-4C ()
+  (walking-bassline
+   '(-9 -2 -5 -8
+     -3 -5 -6 -8
+     -10 -12 -13 -10
+     -11 -8 -6 -11)))
+
+(defpattern bassline-4D ()
+  (walking-bassline
+   '(-13 -6 -2 -1
+     -6 -5 -4 -3
+     -2 -4 -5 -7
+     -8 -11 -6 -14)))
+
+(defpattern section-4 ()
+  (para (bassline-4A))
+  (para (bassline-4B))
+  (para (bassline-4C))
+  (para (bassline-4D)))
 
 ;;; ------------------------------------------------------------
 
