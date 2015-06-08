@@ -339,7 +339,7 @@
    (mapcar
     (lambda (length pitch)
       (etypecase pitch
-        (integer (note 0 length (et pitch) :cfg *sax-config*))
+        (integer (note 0 length (et pitch) :cfg (list :env nil :loop nil :duty (random 3) :vol 7)))
         (null (rst length))))
     '#1=(9 7 . #1#)
     notes)))
@@ -379,9 +379,7 @@
   (note 0 5 (et 22))
   (note 0 5 (et 23))
   (note 0 (+ 6 24) (et 22))
-  (note 0 8 (et 6)))
-
-
+  (note 0 8 (et 18)))
 
 (defpattern chords-3A (:accompany ((sax-3A) (bassline-3A)))
   (chord 16 7 -0.2 t  13 10 6 3 -6 -13)
