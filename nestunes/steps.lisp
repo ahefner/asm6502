@@ -476,6 +476,21 @@
      -14 -9 -5 -2
      -3 -5 -6 -8)))
 
+(defpattern chords-4A (:accompany ((bassline-4A)))
+  (chord (+ 16 6) 7 -0.2 t  13 10 6 3 -6 -13)
+  (rst (- 16 6))
+  (chord 32 7 -0.2 nil  11 6 4 0 -6 -10)
+  (chord 32 7 -0.2 nil  9 6 2 -1 -8 -13)
+  (chord 32 6 -0.2 nil  7 2 -2 -4 -14)
+  (chord (+ 16 6) 7 -0.2 t  10 7 2 -5 -9)
+  (rst (- 16 6))
+  (chord (+ 16 6) 7 -0.2 t  10 7 2 -5 -9)
+  (rst (- 16 6))
+  (rst 8)                               ; skipped bass note..
+  (chord (+ 8 6) 6 -0.2 t  11 7 4 0 -8)
+  (rst (- 16 6))
+  (chord 32 7 -0.2 t  14 9 6 4 2 0 -6))
+
 (defpattern bassline-4B ()
   (walking-bassline
    '(-10 -13 -14 -2
