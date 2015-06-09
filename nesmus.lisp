@@ -346,7 +346,7 @@
         (generate-nsf-preview ,name #',asm-fn-name :filename filename)))))
 
 (defun emit-fixed-cycle-player (context var-base)
-  "Emit fixed-cycle player routine. Requires VAR-BASE specifies 6 bytes of adjacent zeropage storage."
+  "Emit fixed-cycle player routine. Requires VAR-BASE specifies 8 bytes of adjacent zeropage storage."
   (check-type var-base (integer 0 250))
   (let* ((*context* context)
          ;; Music player vars
@@ -355,7 +355,8 @@
          (mptr (+ var-base 2))                       ; Playback pointer
          (mptr-msb  (zp (1+ mptr)))
          (mptr-lsb  (zp mptr))
-         (endptr (+ var-base 4)))
+         (endptr (+ var-base 4))
+         (startptr (+ var-base 6)))
 
     (procedure player-load
       (pla)
@@ -367,8 +368,10 @@
       (sta (zp (1+ mfr-addr)))
       (pla)
       (sta mptr-lsb)
+      (sta (zp startptr))
       (pla)
       (sta mptr-msb)
+      (sta (zp (1+ startptr)))
       (pla)
       (sta (zp endptr))
       (pla)
@@ -394,18 +397,18 @@
       (asif :zero
         (inc mptr-msb))
 
-      ;; FIXME: Don't use these labels here.. that's cheating..
       (lda mptr-lsb)
-      (cmp (imm (lsb (label :seq-end))))
+      (cmp (zp endptr))
       (asif :equal
         (lda mptr-msb)
-        (cmp (imm (msb (label :seq-end))))
+        (cmp (zp (1+ endptr)))
         (asif :equal
-          (when t ;;break-at-end
+          (when t ;;break-at-end, FIXME/TODO
             (brk)
              (db #xF1)
              (rts))
-          (pokeword (label :seq-start) mptr)))
+          (poke (zp startptr) mptr-lsb)
+          (poke (zp (1+ startptr)) mptr-msb)))
 
       (rts))
 
