@@ -15,15 +15,48 @@
          ((or integer promise) (mem address))
          (t address))))
 
-(defun pokeword (value address)
-  (poke (lsb value) address)
-  (poke (msb value) (delay :pokeword-addr-msb (address) (1+ address))))
+;;; 16-Bit Values / Variables
+
+(defstruct (wordvar (:constructor wordvar (address))) address)
+
+(defmethod lsb ((of wordvar))
+  (etypecase (wordvar-address of)
+    ((integer 0 255) (zp (wordvar-address of)))
+    (t (wordvar-address of))))
+
+(defmethod msb ((of wordvar))
+  (etypecase (wordvar-address of)
+    ((integer 0 255) (zp (1+ (wordvar-address of))))
+    (promise (mem (delay :msb-of-wordvar ((address (wordvar-address of))) (1+ address))))))
+
+(defstruct (wordval (:constructor wordval (value))) value)
+
+(defmethod lsb ((of wordval)) (imm (lsb (wordval-value of))))
+(defmethod msb ((of wordval)) (imm (msb (wordval-value of))))
 
 (defun pushword (value)
-  (lda (imm (msb value)))
+  (when (typep value '(or integer promise))
+    (setf value (wordval value)))
+  (lda (msb value))
   (pha)
-  (lda (imm (lsb value)))
+  (lda (lsb value))
   (pha))
+
+(defgeneric pokeword (value address))
+
+(defmethod pokeword (value (address integer))
+  (poke (lsb value) address)
+  (poke (msb value) (1+ address)))
+
+(defmethod pokeword (value (address promise))
+  (pokeword (lsb value) address)
+  (pokeword (msb value) (delay :pokeword-addr-msb (address) (1+ address))))
+
+(defmethod pokeword (value (address wordvar))
+  (poke (lsb value) (lsb address))
+  (poke (msb value) (msb address)))
+
+
 
 ;;;; Control structures
 
