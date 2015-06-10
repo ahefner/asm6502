@@ -345,7 +345,7 @@
       (defun ,(intern "NSF-OUTPUT-FILE" package) (filename)
         (generate-nsf-preview ,name #',asm-fn-name :filename filename)))))
 
-(defun emit-fixed-cycle-player (context var-base)
+(defun emit-fixed-cycle-player (context var-base &key break-at-end)
   "Emit fixed-cycle player routine. Requires VAR-BASE specifies 8 bytes of adjacent zeropage storage."
   (check-type var-base (integer 0 250))
   (let* ((*context* context)
@@ -403,12 +403,11 @@
         (lda mptr-msb)
         (cmp (zp (1+ endptr)))
         (asif :equal
-          (when t ;;break-at-end, FIXME/TODO
+          (when break-at-end
             (brk)
              (db #xF1)
              (rts))
-          (poke (zp startptr) mptr-lsb)
-          (poke (zp (1+ startptr)) mptr-msb)))
+          (pokeword (wordvar startptr) (wordvar mptr))))
 
       (rts))
 
@@ -434,7 +433,7 @@
 
     (setf *origin* #x8000)
 
-    (emit-fixed-cycle-player *context* #x80)
+    (emit-fixed-cycle-player *context* #x80 :break-at-end break-at-end)
 
     (procedure init
       (cld)
@@ -442,7 +441,6 @@
       (pushword (label :seq-end))
       (pushword (label :seq-start))
       (jsr 'player-load)
-      
       (rts))
 
     (write-song-data-for-reg-player (funcall continuation) :seq-start :seq-end)
