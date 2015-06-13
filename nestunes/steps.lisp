@@ -540,11 +540,37 @@
      -2 -4 -5 -7
      -8 -11 -6 -14)))
 
+(defpattern chords-4D (:accompany ((bassline-4D)))
+  (chord 32 7 -0.2 t  13 10 6 3 -6 -13)
+  (chord 22 7 -0.3 t  6 3 -2 -6)
+  (rst 10)
+
+  (rst 8)
+  (chord 14 7 -0.3 t  8 3 0 -7)
+  (rst 10)
+  (chord 24 7 -0.3 t  10 5 2 0 -9)
+  (rst 8)
+
+  (chord 24 7 -0.2 t  7 2 -2 -9)
+  (chord (+ 8 8) 7 -0.2 t  7 2 -2 9 -12)
+  (rst 8)
+  (chord 16 7 -0.2 t  3 -2 -12)
+
+  (rst 8)
+  (chord 14 7 -0.2 t  11 8 4 -8 -11)
+  (rst 10)
+  (chord 22 7 -0.2 t  10 6 4 -6 -12)
+  (rst 10))
+
 (defpattern section-4 ()
-  (para (bassline-4A))
-  (para (bassline-4B))
-  (para (bassline-4C))
-  (para (bassline-4D)))
+  (para (bassline-4A)
+        (chords-4A))
+  (para (bassline-4B)
+        (chords-4B))
+  (para (bassline-4C)
+        (chords-4C))
+  (para (bassline-4D)
+        (chords-4D)))
 
 ;;; ------------------------------------------------------------
 
