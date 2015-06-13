@@ -55,6 +55,7 @@
   (bassline-1D))
 
 (defparameter *sax-config* '(:env nil :loop nil :duty 1 :vol 7))
+(defparameter *sax-long* '(:env nil :loop t :duty 1 :vol 7))
 
 (defun bup (note length &key (d (1- length)) vibrato-delay)
   (para
@@ -491,6 +492,22 @@
   (rst (- 16 6))
   (chord 32 7 -0.2 t  14 9 6 4 2 0 -6))
 
+(defpattern sax-4A (:accompany ((bassline-4A) (chords-4A)))
+  (note 0 56 (et 26) :vibrato-delay 20 :cfg *sax-long*)
+  (note 0  4 (et 25) :cfg *sax-config*)
+  (note 0  4 (et 24))
+
+  (fast-line '(23 14 19 23 22 21 20 24))
+
+  (fast-line '(22 19 17 15 19 15))
+  (rst 16)
+
+  (bup 26 24 :vibrato-delay 12)
+  (note 0 8 (et 22))
+  (rst 8)
+  (note 0 8 (et 18))
+  (note 0 16 (et 14)))
+
 (defpattern bassline-4B ()
   (walking-bassline
    '(-10 -13 -14 -2
@@ -512,6 +529,13 @@
   (rst 10)
   (chord 32 7 -0.2 t  10 5 2 0 -2))
 
+(defpattern sax-4B (:accompany ((bassline-4B)))
+  (fast-line '(nil 14 19 23 14 17 20 24))
+  (fast-line '(15 17 19 22 16 18 20 23))
+  (note 0 24 (et 18))
+  (fast-line '(15 13 12 11 7))
+  (fast-line '(12 14 15 12 19 17 14 12)))
+
 (defpattern bassline-4C ()
   (walking-bassline
    '(-9 -2 -5 -8
@@ -532,6 +556,22 @@
   (chord 14 7 -0.2 t  8 4 -1 -8 -11)
   (rst 10)
   (chord 32 7 -0.2 t  10 6 1 -2))
+
+(defpattern sax-4C (:accompany ((bassline-4C)))
+  (note 0 16 (et 10) :cfg *sax-config*)
+  (fast-line '(nil 20 19 15 nil nil))
+
+  (rst 8)
+  (note 0 8 (et 9))
+  (note 0 6 (et 12))
+  (note 0 5 (et 16))
+  (note 0 5 (et 19))
+  (fast-line '(23 21 18 16))
+
+  (fast-line '(14 16 18 21 19 21 23))
+  (note 0 (+ 8 16) (et 22))
+
+  (note 0 48 (et 23) :vibrato-delay 15))
 
 (defpattern bassline-4D ()
   (walking-bassline
@@ -562,15 +602,36 @@
   (chord 22 7 -0.2 t  10 6 4 -6 -12)
   (rst 10))
 
+(defpattern sax-4D (:accompany ((bassline-4D)))
+  (fast-line '(22 18 20 22 18 15 13 11))
+  (fast-line '(12 14 15 12 19 17 14 12))
+  (note 0 24 (et 10))
+  (note 0 (+ 8 12) (et 19) :vibrato-delay 4)
+  (rst (- 32 12))
+  (rst 8)
+  (note 0 8 (et 13))
+  (note 0 6 (et 16))
+  (note 0 5 (et 20))
+  (note 0 5 (et 23))
+  (fast-line '(18 19 22 25)))
+
 (defpattern section-4 ()
   (para (bassline-4A)
-        (chords-4A))
+        (chords-4A)
+        (sax-4A))
   (para (bassline-4B)
-        (chords-4B))
+        (chords-4B)
+        (sax-4B))
   (para (bassline-4C)
-        (chords-4C))
+        (chords-4C)
+        (sax-4C))
   (para (bassline-4D)
-        (chords-4D)))
+        (chords-4D)
+        (sax-4D)))
+
+(defpattern testme ()
+  (section-3)
+  (section-4))
 
 ;;; ------------------------------------------------------------
 
