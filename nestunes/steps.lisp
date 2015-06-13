@@ -519,6 +519,20 @@
      -10 -12 -13 -10
      -11 -8 -6 -11)))
 
+(defpattern chords-4C (:accompany ((bassline-4C)))
+  (chord 24 7 -0.2 t  10 7 2 -5 -9)
+  (rst (+ 8 32))
+  (chord 32 7 -0.2 nil  4 0 -3)
+  (chord 32 7 -0.2 nil  3 0 -3 -6)
+  (chord 24 7 -0.2 t  2 -1 -3 -8)
+  (rst 8)
+  (chord 24 7 -0.2 t  7 2 -1 -3)
+  (rst 8)
+  (rst 8)
+  (chord 14 7 -0.2 t  8 4 -1 -8 -11)
+  (rst 10)
+  (chord 32 7 -0.2 t  10 6 1 -2))
+
 (defpattern bassline-4D ()
   (walking-bassline
    '(-13 -6 -2 -1
