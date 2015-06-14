@@ -633,9 +633,45 @@
   (section-3)
   (section-4))
 
+(defpattern bassline-5A ()
+  (walking-bassline
+   '(-13 -1 -3 -6
+     -10 -13 -14 -2
+     -9 -2 -5 -9
+     -8 -5 -3 -10)))
+
+(defpattern bassline-5B ()
+  (walking-bassline
+   '(-5 -7 -7 -2
+     -9 -2 -6 -11
+     -13 -6 -2 -1
+     -7 -5 -4 -3)))
+
+(defpattern bassline-5C ()
+  (walking-bassline
+   '(-2 -4 -5 -9
+     -8 -3 -10 -3
+     -5 -10 -13 -10
+     -11 -8 -6 -14)))
+
+(defpattern bassline-5D ()
+  (walking-bassline
+   '(-13 -6 -2 -1
+     -7 -5 -4 -3
+     -2 -4 -5 -9
+     -11 -8 -6 -11)))
+
+(defpattern section-5 ()
+  (para (bassline-5A))
+  (para (bassline-5B))
+  (para (bassline-5C))
+  (para (bassline-5D)))
+
 ;;; ------------------------------------------------------------
 
 (defpattern song ()
   (section-1)
   (section-2)
-  (section-3))
+  (section-3)
+  (section-4)
+  (section-5))
