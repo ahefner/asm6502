@@ -654,12 +654,46 @@
      -9 -2 -5 -9
      -8 -5 -3 -10)))
 
+(defpattern chords-5A (:accompany ((bassline-5A)))
+  (chord 24 7 -0.2 nil 13 10 6 3 -6 -13)
+  (chord 24 6 -0.2 nil 11 6 4 0 -10 -15)
+  (chord 24 7 -0.2 nil 9 6 2 -1 -8 -17)
+  (chord 24 6 -0.2 nil 7 2 0 -4 -14 -19)
+  (chord (+ 12 4) 7 -0.2 t 2 -2 -5 -14 -21)
+  (rst (- 12 4))
+  (chord (+ 12 4) 7 -0.3 t 5 0 -5)
+  (rst (- 12 4))
+  (rst 6)
+  (chord (+ 6 4) 7 -0.3 t 11 4 0 -5 -15)
+  (rst (- 12 4))
+  (chord 24 7 -0.2 t 11 6 0 -10))
+
+(defpattern sax-5A (:accompany ((bassline-5A) (chords-5A)))
+  (fast-line '(nil 14 19 23 14 17 20 24
+               15 17 19 22 16 18 20 23
+               18 18 18 15 13 12 11 7
+               12 14 15 12 19 17 14 12)))
+
 (defpattern bassline-5B ()
   (walking-bassline
    '(-5 -7 -7 -2
      -9 -2 -6 -11
      -13 -6 -2 -1
      -7 -5 -4 -3)))
+
+(defpattern chords-5B ()
+  (chord (+ 12 4) 7 -0.2 t 9 2 -1 -10 -17)
+  (rst (- 12 4))
+  (chord 24 7 -0.2 nil 7 2 0 -4 -14 -19)
+  (chord 24 7 -0.2 nil 2 -2 -5 -14 -21)
+  (chord 24 7 -0.2 nil 4 -1 -6 -11 -18)
+  (chord (+ 12 6) 7 -0.2 t 6 1 -2 -6 -13)
+  (rst (- 12 6))
+  (rst 24)
+  (rst 6)
+  (chord (+ 6 6) 7 -0.3 t 7 3 0 -4 -9)
+  (rst (- 12 6))
+  (chord 24 7 -0.2 t 7 2 0 -4 -14))
 
 (defpattern bassline-5C ()
   (walking-bassline
@@ -668,6 +702,21 @@
      -5 -10 -13 -10
      -11 -8 -6 -14)))
 
+(defpattern chords-5C ()
+  (chord (+ 12 6) 7 -0.2 t 10 5 0 -5 -9)
+  (rst (- 12 6))
+  (rst 24)
+  (rst 6)
+  (chord (+ 6 6) 7 -0.3 t 4 0 -5 -8)
+  (rst (- 12 6))
+  (chord 24 7 -0.2 nil 14 10 5 0 -6)
+  (chord 24 7 -0.2 t 9 6 2 -1 -3 -10)
+  (rst 24)
+  (rst 6)
+  (chord (+ 6 6) 7 -0.3 t 18 11 6 -1 -4)
+  (rst (- 12 6))
+  (chord 24 7 -0.2 t 19 13 10 -2 -6))
+
 (defpattern bassline-5D ()
   (walking-bassline
    '(-13 -6 -2 -1
@@ -675,11 +724,32 @@
      -2 -4 -5 -9
      -11 -8 -6 -11)))
 
+(defpattern chords-5D ()
+  (chord 36 7 -0.15 t 18 15 10 2 -6 -13)
+  (rst 12)
+  (rst 6)
+  (chord (+ 6 6) 7 -0.2 t 12 8 1 -4 -7)
+  (rst (- 12 6))
+  (chord 24 7 -0.2 nil 11 7 1 8 1 -4)
+  (chord 12 7 -0.2 t 10 5 2 -6 -8)
+  (rst 12)
+  (chord 12 7 -0.2 t 10 5 0 -6 -8)
+  (rst 12)
+  (rst 6)
+  (chord (+ 6 6) 7 -0.2 t 11 8 4 -1 -4 -11)
+  (rst (- 12 6))
+  (chord 18 7 -0.2 t 10 6 4 -2 -6)
+  (rst 6))
+
 (defpattern section-5 ()
-  (para (bassline-5A))
-  (para (bassline-5B))
-  (para (bassline-5C))
-  (para (bassline-5D)))
+  (para (bassline-5A)
+        (chords-5A))
+  (para (bassline-5B)
+        (chords-5B))
+  (para (bassline-5C)
+        (chords-5C))
+  (para (bassline-5D)
+        (chords-5D)))
 
 ;;; ------------------------------------------------------------
 
