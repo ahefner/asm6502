@@ -79,7 +79,7 @@
   (note 0 24 (et 14) :vibrato-delay 0)
   (bup 11 24)
   (note 0 18 (et  7))
-  (note 0 (+ 48 6) (et 10) :d 64 :vibrato-delay 12)
+  (note 0 (+ 48 6) (et 10) :d 48 :vibrato-delay 12)
   (bup 11 18)
   (note 0 (+ 6 24) (et 9) :vibrato-delay 8))
 
@@ -88,9 +88,9 @@
                                        (bassline-1D))))
   (bup 14 24)
   (note 0 24 (et 11) :vibrato-delay 8)
-  (bup 7 24 :vibrato-delay 24)
-  (note 0 16 (et 3))
-  (note 0 (+ 48 6) (et 6) :d 64 :vibrato-delay 24)
+  (bup 7 24 :vibrato-delay 16)
+  (note 0 18 (et 3))
+  (note 0 (+ 48 6) (et 6) :d 48 :vibrato-delay 20)
   (bup 7 24)
   (note 0 18 (et 5) :vibrato-delay 0)
   (note 0 (+ 48 6) (et 10) :vibrato-delay 24)
@@ -206,13 +206,13 @@
                      (list (apply 'tri 12 (et (first pitch-or-whatevs)) (rest pitch-or-whatevs)))))
 
                  '(-9 -2 -5 (-8 :d 10)
-                   -3 (-3 :d 10 :vibrato-delay 0) -10 (-10 :d 10 :vibrato-delay 0)
+                   -3 (-3 :vibrato-delay 0) -10 (-10 :vibrato-delay 0)
                    -5 -3 -1 -5
                    (-8 :d 10 :vibrato-delay 0) -11 (-6 :d 12 :vibrato-delay 0) -14
 
                    -13 -6 -3 (-1 :d 10 :vibrato-delay 4)
                    (-7 :d 10) -5 (-4 :d 10) -2
-                   -9 -10 (-12 :d 13 :vibrato-delay 4) -14
+                   -9 -10 (-12 :vibrato-delay 4) -14
                    (-11 :d 10) -8 (-6 :d 10 :vibrato-delay 4) -14))))
 
 (defpattern sax-2A (:accompany ((bassline-2A)))
@@ -501,7 +501,10 @@
   (chord 24 7 -0.2 t  14 9 6 4 2 0 -6))
 
 (defpattern sax-4A (:accompany ((bassline-4A) (chords-4A)))
-  (note 0 42 (et 26) :vibrato-delay 20 :cfg *sax-long*)
+  (note 0 1 (et 23) :cfg *sax-long*)
+  (note 0 1 (et 24) :cfg *sax-long*)
+  (note 0 1 (et 25) :cfg *sax-long*)
+  (note 0 39 (et 26) :vibrato-delay 16 :cfg *sax-long*)
   (note 0  3 (et 25) :cfg *sax-config*)
   (note 0  3 (et 24))
 
@@ -581,7 +584,8 @@
   (fast-line '(14 16 18 21 19 21 23))
   (note 0 (+ 6 12) (et 22))
 
-  (note 0 36 (et 23) :vibrato-delay 15))
+  (note 0 1 (et 22.5) :cfg *sax-long*)
+  (note 0 (- 36 1) (et 23) :vibrato-delay 10))
 
 (defpattern bassline-4D ()
   (walking-bassline
