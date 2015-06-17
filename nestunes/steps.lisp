@@ -695,6 +695,17 @@
   (rst (- 12 6))
   (chord 24 7 -0.2 t 7 2 0 -4 -14))
 
+(defpattern sax-5B (:accompany ((bassline-5B) (chords-5B)))
+  (fast-line '(19 21 23 26 20 24 22 20
+               19 15 17 19 16 18 20 22))
+  (note 0 12 (et 25))
+  (fast-line '(22 20 18 15))
+  (rst 12)
+  (rst 24)
+  (bup 26 12)
+  (note 0 6 (et 14))
+  (note 0 6 (et 24)))
+
 (defpattern bassline-5C ()
   (walking-bassline
    '(-2 -4 -5 -9
@@ -716,6 +727,14 @@
   (chord (+ 6 6) 7 -0.3 t 18 11 6 -1 -4)
   (rst (- 12 6))
   (chord 24 7 -0.2 t 19 13 10 -2 -6))
+
+(defpattern sax-5C ()
+  (fast-line '(22 20 19 17 15 17 nil 22))
+  (note 0 (+ 36 6) (et 26) :vibrato-delay 10)
+  (note 0 3 (et 25))
+  (note 0 3 (et 24))
+  (fast-line '(23 18 21 18 19 14 11 7
+               15 11 10  6  8  9  5 9)))
 
 (defpattern bassline-5D ()
   (walking-bassline
@@ -741,15 +760,34 @@
   (chord 18 7 -0.2 t 10 6 4 -2 -6)
   (rst 6))
 
+(defpattern sax-5D ()
+  (fast-line '(11 13 15 18 21 18 15 11))
+  (bup 20 18)
+  (note 0 3 (et 19))
+  (note 0 3 (et 18))
+  (fast-line '(17 15 14 12))
+  (fast-line '(10 8 7 5 3 5 7 8))
+  (note 0 12 (et 15) :cfg *sax-config*)
+  (rst 12)
+  (rst 24))
+
 (defpattern section-5 ()
   (para (bassline-5A)
-        (chords-5A))
+        (chords-5A)
+        (sax-5A))
   (para (bassline-5B)
-        (chords-5B))
+        (chords-5B)
+        (sax-5B))
   (para (bassline-5C)
-        (chords-5C))
+        (chords-5C)
+        (sax-5C))
   (para (bassline-5D)
-        (chords-5D)))
+        (chords-5D)
+        (sax-5D)))
+
+(defpattern testme2 ()
+  (section-4)
+  (section-5))
 
 ;;; ------------------------------------------------------------
 
