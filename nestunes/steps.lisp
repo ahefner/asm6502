@@ -669,10 +669,10 @@
   (chord 24 7 -0.2 t 11 6 0 -10))
 
 (defpattern sax-5A (:accompany ((bassline-5A) (chords-5A)))
-  (fast-line '(nil 14 19 23 14 17 20 24
-               15 17 19 22 16 18 20 23
-               18 18 18 15 13 12 11 7
-               12 14 15 12 19 17 14 12)))
+  (fast-line '(23 13 15 18  14 16 17 21
+               19 14 11  7  12  8  7  5
+                3  5  7  8  10 12 14 17
+               16 20 19 nil 23 14 16 18)))
 
 (defpattern bassline-5B ()
   (walking-bassline
