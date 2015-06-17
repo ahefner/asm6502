@@ -789,6 +789,27 @@
   (section-4)
   (section-5))
 
+(defpattern bassline-6A ()
+  (walking-bassline '(-11 -1 -3 -6
+                      -10 -13 -14 -2
+                      -9 -2 -5 -9
+                      -3 -1 0 2)))
+
+(defpattern bassline-6B ()
+  (walking-bassline '(-5 -10 -14 -2 -9 -2 -6 -11 -13 -6 -2 -1 -7 -5 -4 -3)))
+
+(defpattern bassline-6C ()
+  (walking-bassline '(-2 -4 -5 -9 -8 -3 -10 -3 -5 -3 -1 -5 -1 -8 -2 -6)))
+
+(defpattern bassline-6D ()
+  (walking-bassline '(-1 (-2 -1) -2 -1 -7 -5 -4 -3 -2 -4 -5 -9 -8 -11 -6 -14)))
+
+(defpattern section-6 ()
+  (para (bassline-6A))
+  (para (bassline-6B))
+  (para (bassline-6C))
+  (para (bassline-6D)))
+
 ;;; ------------------------------------------------------------
 
 (defpattern song ()
