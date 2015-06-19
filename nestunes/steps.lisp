@@ -790,10 +790,7 @@
   (section-5))
 
 (defpattern bassline-6A ()
-  (walking-bassline '(-11 -1 -3 -6
-                      -10 -13 -14 -2
-                      -9 -2 -5 -9
-                      -3 -1 0 2)))
+  (walking-bassline '(-11 -1 -3 -6 -10 -13 -14 -2 -9 -2 -5 -9 -3 -1 0 2)))
 
 (defpattern bassline-6B ()
   (walking-bassline '(-5 -10 -14 -2 -9 -2 -6 -11 -13 -6 -2 -1 -7 -5 -4 -3)))
@@ -804,11 +801,50 @@
 (defpattern bassline-6D ()
   (walking-bassline '(-1 (-2 -1) -2 -1 -7 -5 -4 -3 -2 -4 -5 -9 -8 -11 -6 -14)))
 
+(defpattern chords-6A (:accompany ((bassline-6A)))
+  (chord 12 7 -0.2 t 13 10 6 3 -6 -11)
+  (rst 12)
+  (chord 24 7 -0.2 nil 11 6 4 0 -10 -15)
+  (chord 24 7 -0.2 nil 9 4 2 -1 -8 -17)
+  (chord 24 7 -0.2 nil 7 2 0 -4 -10 -19)
+  (chord 12 7 -0.2 t 10 7 2 -5 -9)
+  (rst 36)
+  (rst 6)
+  (chord (+ 6 4) 7 -0.2 t 4 0 -5 -8 -15)
+  (rst (- 12 4))
+  (chord 24 7 -0.2 t 3 0 -3 -6))
+
+(defpattern chords-6B (:accompany ((bassline-6B)))
+  (chord 24 7 -0.2 nil 9 2 -1 -8 -17)
+  (chord 24 7 -0.2 nil 7 2 0 -4 -14 -19)
+  (chord 24 7 -0.2 t 2 -2 -8 -21)
+  (rst 24)
+  (chord (+ 12 6) 7 -0.2 t 6 3 -9 -13)
+  (rst (- 36 6))
+  (rst 6)
+  (chord (+ 6 4) 7 -0.2 t 7 3 0 -4 -7)
+  (rst (- 12 4))
+  (chord 24 7 -0.2 t 7 2 0 -3))
+
 (defpattern section-6 ()
-  (para (bassline-6A))
-  (para (bassline-6B))
+  (para (bassline-6A)
+        (chords-6A))
+  (para (bassline-6B)
+        (chords-6B))
   (para (bassline-6C))
   (para (bassline-6D)))
+
+(defpattern bassline-7A ()
+  (walking-bassline '(-11 -1 -3 -10 -5 -10 -14 -2 -9 -2 -5 -9 -8 -6 -10 -3)))
+
+(defpattern bassline-7B ()
+  (walking-bassline '(-5 (-10 -13) -14 -2 -9 -2 -6 -9 (-13 -1) -6 -2 -1 -7 -5 -4 -3)))
+
+(defpattern bassline-7C ()
+  (walking-bassline '(-2 -4 -5 -9 -8 -15 -10 -3 -5 -3 -1 -5 0 1 2 -2)))
+
+(defpattern bassline-7D ()
+  (walking-bassline '(-1 -2 -3 -1 -7 -5 -4 -3 -2 -4 -5 -9 -4 -8 -9 -11)))
 
 ;;; ------------------------------------------------------------
 
