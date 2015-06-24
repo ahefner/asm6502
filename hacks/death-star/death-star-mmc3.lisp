@@ -4,7 +4,7 @@
 
 (in-package :death-star)
 
-(defvar *path* #.(truename *compile-file-pathname*))
+(defvar *path* #.*compile-file-pathname*)
 
 (defparameter *mmc3-bank-config* 0
   "Used for upper bits of writes to $8000 via MMC3-BANK function")
@@ -14,8 +14,24 @@
   (poke value #x8001))
 
 (let* ((*context* (make-instance 'basic-context :address #x8000))
-       (*default-pathname-defaults* *path*)
-       (vblank-flag (zp 16)))
+       (image-x-offset 64)
+       (image-y-offset 64)
+       (vblank-flag (zp #x10))
+       ;; (tmp-ptr #x20)
+       ;; (tmp-ptr-lsb (zp tmp-ptr))
+       ;; (tmp-ptr-msb (zp (1+ tmp-ptr)))
+       (tmp-mask-min (zp #x22))
+       (tmp-mask-max (zp #x23))
+       (tmp-x (zp #x24))
+       (tmp-y (zp #x25))
+       (sprites #x0200)
+       (sprite-y (+ sprites 0))
+       (sprite-tile (+ sprites 1))
+       (sprite-attr (+ sprites 2))
+       (sprite-x (+ sprites 3))
+       (x-table #x0300)
+       (y-table #x0340)
+       (z-table #x3080))
 
   ;; --- ENTRY POINT (assemble in last PRG bank) ---
   (advance-to #xE000)
@@ -35,11 +51,25 @@
     (bita (mem +ppu-status+)))
 
   ;; Build empty sprite table at $0200
-  (lda (imm #xFF))
+  (lda (imm 0))
   (ldx (imm 0))
   (as/until :zero
     (sta (abx #x0200))
     (inx))
+
+  ;; Program sprite attributes
+  (lda (imm #x20))                      ; Sprite attribute: Background priority
+  (as/until :zero
+;;    (sta (abx sprite-attr))
+    (inx)
+    (inx)
+    (inx)
+    (inx))
+
+  ;; Randomize initial star positions (temporary..)
+  (dotimes (index 64)
+    (poke (random 256) (+ x-table index))
+    (poke (random 256) (+ y-table index)))
 
   ;; Kill time while PPU warms up..
   (ldy (imm 128))
@@ -66,14 +96,15 @@
   (as/until :negative
     (bita (mem +ppu-status+)))
 
-
   ;; Program palette
   (ppuaddr #x3F00)
-  (loop repeat 4 do
-        (poke #x0F +vram-io+)
-        (poke #x2D +vram-io+)
-        (poke #x00 +vram-io+)
-        (poke #x3D +vram-io+))
+  (ldy (imm 8))
+  (as/until :zero
+    (poke #x0F +vram-io+)
+    (poke #x2D +vram-io+)
+    (poke #x00 +vram-io+)
+    (poke #x3D +vram-io+)
+    (dey))
 
   ;; Clear nametable $2000
   (ppuaddr #x2000)
@@ -85,6 +116,7 @@
       (sta (mem +vram-io+))
       (dex))
     (dey))
+
   ;; Clear attribute table
   (ldx (imm 64))
   (lda (imm 0))                         ; First BG palette
@@ -110,33 +142,131 @@
     (stx (mem +vram-io+))
     (inx))
 
+  ;; CHR contents is mostly 1:1 with the screen image, but zero out
+  ;; the couple characters used for stars:
+  (ppuaddr #x2108)
+  (lda (imm 4))                         ; Should be empty..
+  (sta (mem +vram-io+))
+
   ;; Turn the screen back on
-  (poke #b10001000 +ppu-cr1+)         ; BG CHR $0000, SPR CHR $1000
+  (poke #b10000000 +ppu-cr1+)         ; NMI ON, BG CHR $0000, SPR CHR $0000
   (jsr 'wait-vblank)
   (jsr 'wait-vblank)
 
   (poke 0 +vram-scroll+)
   (sta (mem +vram-scroll+))
   (ppuaddr #x2000)
-  (poke #xE8 +ppu-cr2+)                  ; BG visible, SPR off, darken screen
+  (poke #xF8 +ppu-cr2+)                  ; BG visible, SPR visible, dim screen
 
   (with-label :loop
 
     ;; Even frames:
+    (jsr 'build-sprites)
     (jsr 'wait-vblank)
+    (ppuaddr 0)
+    (poke 0 +vram-scroll+)
+    (lda (imm (msb sprites)))           ; Transfer sprites
+    (sta (mem +sprite-dma+))
     (mmc3-bank 0 0)                       ; PPU $0000
     (mmc3-bank 1 2)                       ; PPU $0800
-    (poke #b10001000 +ppu-cr1+)           ; BG CHR $0000, SPR CHR $1000
+    (poke #b10000000 +ppu-cr1+)           ; NMI ON, BG CHR $0000, SPR CHR $0000
 
     ;; Odd frames:
+    ;;(jsr 'build-sprites)
     (jsr 'wait-vblank)
+    (ppuaddr 0)
+    (poke 0 +vram-scroll+)
+    (lda (imm (msb sprites)))           ; Transfer sprites
+    (sta (mem +sprite-dma+))
     (mmc3-bank 0 4)                       ; PPU $0000
     (mmc3-bank 1 6)                       ; PPU $0800
-    (poke #b10001000 +ppu-cr1+)           ; BG CHR $0000, SPR CHR $1000
+    (poke #b10000000 +ppu-cr1+)           ; NMI ON, BG CHR $0000, SPR CHR $0000
 
     (jmp (mem :loop)))
 
   (jmp (mem *origin*))
+
+  ;; ------------------------------------------------------------
+
+  (procedure build-sprites
+    (ldx (imm 63))
+    ;; Loop through sprites. X counts sprite number down from 63 to 0.
+    (as/until :negative
+      (txa)                             ; Y=X*4
+      (asl)
+      (asl)
+      (tay)
+
+      ;; Update sprite X/Y coordinates
+      (lda (abx y-table))
+      (sta (aby sprite-y))
+      (sta tmp-y)
+
+      (lda (abx x-table))
+      (sta (aby sprite-x))
+      (sta tmp-x)
+      (inc (abx x-table))
+
+      (txa)                             ; Save X register on stack.
+      (pha)
+
+      (lda tmp-y)
+      (tax)
+      (lda (abx 'mask-max))
+      (sta tmp-mask-max)
+      (lda (abx 'mask-min))
+      (sec)
+      (cmp tmp-x)
+      (asif :no-carry
+        (lda tmp-x)
+        (cmp tmp-mask-max)
+        (asif :no-carry
+          (lda (imm 1))
+          :else
+          (lda (imm 0)))
+        :else
+        (lda (imm 0)))
+      (sta (aby sprite-tile))
+
+      (pla)                             ; Restore X register
+      (tax)
+      (dex))
+    (rts))
+
+(defun gen-mask-pairs (matrix)
+  (loop
+     with width = (array-dimension matrix 1)
+     with height = (array-dimension matrix 0)
+     for y below height
+     collect (list (loop for x from 0 below width
+                         when (not (zerop (aref matrix y x)))
+                         return x
+                         finally (return nil))
+                   (loop for x from (1- width) above 0
+                         when (not (zerop (aref matrix y x)))
+                         return x
+                         finally (return nil)))))
+
+  ;;; Emit table of pixel spans obscured by foreground image - Sprite
+  ;;; priority isn't sufficient to keep sprites behind the image
+  ;;; because there are black pixels in the image.
+  (let ((spans (gen-mask-pairs (ichr:read-gif "mask.gif"))))
+    (assert (= 128 (length spans)))
+
+    (set-label 'mask-min)
+    (loop repeat 64 do (db 255))
+    (loop for span in spans
+       as tmp = (first span)
+       ;; Offset coordinate by -1, easier than changing comparison from <= to <
+       do (db (if tmp (+ image-x-offset -1 tmp) 255)))
+    (loop repeat 64 do (db 255))
+
+    (set-label 'mask-max)
+    (loop repeat 64 do (db 255))
+    (loop for span in spans
+       as tmp = (second span)
+       do (db (if tmp (+ image-x-offset tmp) 0)))
+    (loop repeat 64 do (db 255)))
 
   (procedure wait-vblank
     (lda (imm 0))
@@ -169,3 +299,4 @@
                                 (ichr:encode-gif "chr2.gif")
                                 (ichr:encode-gif "chr1.gif")
                                 (ichr:encode-gif "chr2.gif"))))
+
