@@ -851,13 +851,29 @@
   (rst (- 12 4))
   (chord 24 7 -0.2 t 10 6 4 -2))
 
+(defpattern sax-6A (:accompany ((bassline-6A) (chords-6A)))
+  (fast-line '(nil 6 11 15 14 16 18 21
+               19 14 11 7 12 8 7 5
+               3 5 7 8 10 12 14 17
+               16 20 19 nil 23 14 16 21)))
+
+(defpattern sax-6B (:accompany ((bassline-6B) (chords-6B)))
+  (fast-line '(19 21 23 24 14 17 20 24
+               15 17))
+  (note 0 (+ 12 6) (et 19) :vibrato-delay 2)
+  (rst (- 24 6))
+  (note 0 12 (et 18))
+  (fast-line '(15 13 11 12 14 17 22 21 20 17 15 14 12)))
+
 (defpattern section-6 ()
   (para (bassline-6A)
         (chords-6A))
   (para (bassline-6B)
         (chords-6B))
-  (para (bassline-6C))
-  (para (bassline-6D)))
+  (para (bassline-6C)
+        (chords-6C))
+  (para (bassline-6D)
+        (chords-6D)))
 
 (defpattern bassline-7A ()
   (walking-bassline '(-11 -1 -3 -10 -5 -10 -14 -2 -9 -2 -5 -9 -8 -6 -10 -3)))
