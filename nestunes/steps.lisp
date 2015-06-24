@@ -863,7 +863,31 @@
   (note 0 (+ 12 6) (et 19) :vibrato-delay 2)
   (rst (- 24 6))
   (note 0 12 (et 18))
-  (fast-line '(15 13 11 12 14 17 22 21 20 17 15 14 12)))
+  (fast-line '(15 13 11 12 14 17
+               22 21 20 19 17 15 14 12)))
+
+(defpattern sax-6C (:accompany ((bassline-6C) (chords-6C)))
+  (fast-line '(10 20 19 14 17 15 14 17))
+
+  (fast-line '(16 12 9 4))
+  (note 0 18 (et 7) :vibrato-delay 6)
+  (note 0 6 (et 6))
+
+  (note 0 (+ 12 4) (et 14) :vibrato-delay 6)
+  (rst (- 6 4))
+  (note 0 2 (et 11))
+  (note 0 2 (et 14))
+  (note 0 2 (et 19))
+  (note 0 12 (et 23))
+  (rst 12)
+
+  (rst 8)
+  (note 0 6 (et 13))
+  (note 0 4 (et 16))
+  (note 0 4 (et 20))
+  (note 0 4 (et 23))
+  (note 0 12 (et 22))
+  (note 0 12 (et 25)))
 
 (defpattern section-6 ()
   (para (bassline-6A)
