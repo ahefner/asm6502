@@ -23,7 +23,8 @@
            #:context-code-vector #:link
            #:context-find-label #:context-set-label
            #:*context* #:basic-context #:local-context
-           #:emit #:label #:set-label #:advance-to #:align #:db #:dw #:rel #:*origin*
+           #:emit #:label #:set-label #:label-difference  #:advance-to #:align
+           #:db #:dw #:rel #:*origin*
            #:opcode-cycles #:context-note-cycles #:counting-cycles #:local-context))
 
 (defpackage :asm6502-utility

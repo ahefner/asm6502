@@ -273,6 +273,12 @@
   (context-set-label context name)
   name)
 
+(defun label-difference (start-name end-name)
+  (let ((start (label start-name))
+        (end (label end-name)))
+    (delay :label-difference (start end)
+      (- end start))))
+
 ;;;;
 ;;;; Definition of Addressing Modes
 ;;;;
