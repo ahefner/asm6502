@@ -932,6 +932,20 @@
 (defpattern bassline-7D ()
   (walking-bassline '(-1 -2 -3 -1 -7 -5 -4 -3 -2 -4 -5 -9 -4 -8 -9 -11)))
 
+(defpattern chords-7A (:accompany ((bassline-7A)))
+  (chord (+ 4 12) 7 -0.2 t  10 6 1 -6 -13)
+  (rst (- 12 4))
+  (chord 24 7 -0.2 nil  11 6 4 0 -6 -15)
+  (chord 24 7 -0.2 nil  9 6 2 -1 -10 -17)
+  (chord 24 7 -0.2 nil  7 2 0 -4 -14 -19)
+  (chord 24 7 -0.2 nil  2 -2 -7 -14 -21)
+  (chord (+ 12 4) 7 -0.2 t  5 2 -1 -13)
+  (rst (- 12 4))
+  (rst 6)
+  (chord (+ 6 6) 7 -0.2 t  7 4 0 -5 -15)
+  (rst (- 12 6))
+  (chord 12 7 -0.3 t  6 3 0 -6))
+
 ;;; ------------------------------------------------------------
 
 (defpattern song ()
