@@ -22,22 +22,39 @@
 
 ;;;; Code
 
-(defun sprite (x y tile)
+(defun oam-flag-value (flag)
+  (let ((tmp (assoc flag '((:fliph . 64)
+                           (:flipv . 128)
+                           (:fg . 0)
+                           (:bg . 32)))))
+    (when (null tmp)
+      (error "Unknown flag ~A" flag))
+    (cdr tmp)))
+
+(defun sprite (x y tile palette &rest flags)
   (db y)
   (db tile)
-  (db 0)
+  (db (logior palette (reduce #'+ (mapcar #'oam-flag-value flags))))
   (db x))
 
 (align 256)
-(set-label :oamdata)
+(set-label :oamdata1)
 (let ((x 40)
       (y 80))
-  (sprite (+ x  0) (+ y  0) #x00)
-  (sprite (+ x  8) (+ y  0) #x01)
-  (sprite (+ x 16) (+ y  0) #x02)
-  (sprite (+ x 24) (+ y  0) #x03)
-  (sprite (+ x  0) (+ y  8) #x10)
-  (sprite (+ x  8) (+ y  8) #x11))
+  (sprite (+ x 0) (+ y 0) #x00 1)
+  (sprite (+ x 8) (+ y 0) #x01 1)
+  (sprite (+ x 0) (+ y 8) #x10 0)
+  (sprite (+ x 8) (+ y 8) #x11 0))
+(align 256)
+
+(align 256)
+(set-label :oamdata2)
+(let ((x 40)
+      (y 80))
+  (sprite (+ x 8) (+ y 0) #x00 1 :fliph)
+  (sprite (+ x 0) (+ y 0) #x01 1 :fliph)
+  (sprite (+ x 8) (+ y 8) #x10 0 :fliph)
+  (sprite (+ x 0) (+ y 8) #x11 0 :fliph))
 (align 256)
 
 (procedure reset
@@ -63,18 +80,30 @@
   (jsr 'wait-for-vblank)
   (jsr 'wait-for-vblank)
   (ppuaddr #x3F00)
-  (dolist (color '(#x38 #x2D #x3D #x30  #x38 #x03 #x13 #x23
-                   #x38 #x2D #x3D #x30  #x38 #x05 #x15 #x25
-                   #x38 #x3F #x27 #x37))
-    (poke color +vram-io+))
+  (let ((bg #x1B))
+    (dolist (color (list bg #x2D #x3D #x30  bg #x03 #x13 #x23
+                         bg #x2D #x3D #x30  bg #x05 #x15 #x25
+                         bg #x1d #x26 #x38  bg #x1d #x13 #x38))
+     (poke color +vram-io+)))
 
   ;; Main loop - wait for vblank, reset PPU registers, do sprite DMA.
   (with-label :loop
-    (jsr 'wait-for-vblank)
-    (poke 0 +spr-addr+)
-    (poke (msb (label :oamdata)) +sprite-dma+)
-    (poke #b10001000 +ppu-cr1+)
-    (poke #b00010100 +ppu-cr2+)
+    (ldx (imm 10))
+    (as/until :zero
+      (jsr 'wait-for-vblank)
+      (poke 0 +spr-addr+)
+      (poke (msb (label :oamdata1)) +sprite-dma+)
+      (poke #b10001000 +ppu-cr1+)
+      (poke #b00010100 +ppu-cr2+)
+      (dex))
+    (ldx (imm 10))
+    (as/until :zero
+      (jsr 'wait-for-vblank)
+      (poke 0 +spr-addr+)
+      (poke (msb (label :oamdata2)) +sprite-dma+)
+      (poke #b10001000 +ppu-cr1+)
+      (poke #b00010100 +ppu-cr2+)
+      (dex))
     (jmp (mem :loop))))
 
 (procedure wait-for-vblank
