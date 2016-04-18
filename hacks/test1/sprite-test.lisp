@@ -83,7 +83,7 @@
   (let ((bg #x1B))
     (dolist (color (list bg #x2D #x3D #x30  bg #x03 #x13 #x23
                          bg #x2D #x3D #x30  bg #x05 #x15 #x25
-                         bg #x1d #x26 #x38  bg #x1d #x13 #x38))
+                         bg #x1d #x16 #x37  bg #x1d #x13 #x37))
      (poke color +vram-io+)))
 
   ;; Main loop - wait for vblank, reset PPU registers, do sprite DMA.
