@@ -20,6 +20,13 @@
 
 (defparameter vblank-flag (zp #xFF))
 
+(defparameter *sprite-x* (zp #xF0))
+(defparameter *sprite-y* (zp #xF1))
+(defparameter *oamidx* (zp #xFF))
+
+(defparameter *oam-shadow* #x0200)
+
+
 ;;;; Code
 
 (defun oam-flag-value (flag)
@@ -31,31 +38,43 @@
       (error "Unknown flag ~A" flag))
     (cdr tmp)))
 
-(defun sprite (x y tile palette &rest flags)
-  (db y)
-  (db tile)
-  (db (logior palette (reduce #'+ (mapcar #'oam-flag-value flags))))
-  (db x))
+(defmacro defsprite (name &body body)
+  `(procedure ,name ;;',(list :sprite name)
+     (ldy *oamidx*)
+     (mapcar
+      (lambda (spec)
+        (destructuring-bind (x y tile palette &rest flags) spec
+          ;; Write Y coordinate
+          (lda *sprite-y*)
+          (unless (zerop y)
+            (clc)
+            (adc (imm y)))
+          (sta (aby *oam-shadow*))
+          (iny)
+          ;; Write tile index
+          (lda (imm tile))
+          (sta (aby *oam-shadow*))
+          (iny)
+          ;; Write flags
+          (lda (imm (logior palette (reduce #'+ (mapcar #'oam-flag-value flags)))))
+          (sta (aby *oam-shadow*))
+          (iny)
+          ;; Write X coordinate
+          (lda *sprite-x*)
+          (unless (zerop x)
+            (clc)
+            (adc (imm x)))
+          (sta (aby *oam-shadow*))
+          (iny)))
+      ',body)
+     (sty *oamidx*)
+     (rts)))
 
-(align 256)
-(set-label :oamdata1)
-(let ((x 40)
-      (y 80))
-  (sprite (+ x 0) (+ y 0) #x00 1)
-  (sprite (+ x 8) (+ y 0) #x01 1)
-  (sprite (+ x 0) (+ y 8) #x10 0)
-  (sprite (+ x 8) (+ y 8) #x11 0))
-(align 256)
-
-(align 256)
-(set-label :oamdata2)
-(let ((x 40)
-      (y 80))
-  (sprite (+ x 8) (+ y 0) #x00 1 :fliph)
-  (sprite (+ x 0) (+ y 0) #x01 1 :fliph)
-  (sprite (+ x 8) (+ y 8) #x10 0 :fliph)
-  (sprite (+ x 0) (+ y 8) #x11 0 :fliph))
-(align 256)
+(defsprite dude1
+  (0 0 #x00 1)
+  (8 0 #x01 1)
+  (0 8 #x10 0)
+  (8 8 #x11 0))
 
 (procedure reset
   (sei)
@@ -88,23 +107,29 @@
 
   ;; Main loop - wait for vblank, reset PPU registers, do sprite DMA.
   (with-label :loop
-    (ldx (imm 10))
-    (as/until :zero
-      (jsr 'wait-for-vblank)
-      (poke 0 +spr-addr+)
-      (poke (msb (label :oamdata1)) +sprite-dma+)
-      (poke #b10001000 +ppu-cr1+)
-      (poke #b00010100 +ppu-cr2+)
-      (dex))
-    (ldx (imm 10))
-    (as/until :zero
-      (jsr 'wait-for-vblank)
-      (poke 0 +spr-addr+)
-      (poke (msb (label :oamdata2)) +sprite-dma+)
-      (poke #b10001000 +ppu-cr1+)
-      (poke #b00010100 +ppu-cr2+)
-      (dex))
+
+    (jsr 'reset-sprites)
+    (poke 40 *sprite-x*)
+    (poke 80 *sprite-y*)
+    (jsr 'dude1)
+
+    (poke 90 *sprite-x*)
+    (jsr 'dude1)
+
+    (jsr 'wait-for-vblank)
+    (poke 0 +spr-addr+)
+    (poke (msb *oam-shadow*) +sprite-dma+)
+    (poke #b10001000 +ppu-cr1+)
+    (poke #b00010100 +ppu-cr2+)
+
     (jmp (mem :loop))))
+
+(procedure reset-sprites
+  (ldx (imm 0))
+  (lda (imm 255))
+  (as/until :zero
+    (sta (abx *oam-shadow*))
+    (dex)))
 
 (procedure wait-for-vblank
   (lda (imm 0))
