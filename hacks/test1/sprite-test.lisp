@@ -158,7 +158,9 @@
 (procedure brk-handler (rti))
 
 (procedure vblank-handler
+  (php)
   (inc vblank-flag)
+  (plp)
   (rti))
 
 ;;;; Interrupt vectors
