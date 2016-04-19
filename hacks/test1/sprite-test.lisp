@@ -76,6 +76,12 @@
   (0 8 #x10 0)
   (8 8 #x11 0))
 
+(defsprite dude2
+  (0 0 #x02 0)
+  (8 0 #x03 0)
+  (0 8 #x12 0)
+  (8 8 #x13 0))
+
 (procedure reset
   (sei)
   (cld)
@@ -113,16 +119,26 @@
     (poke 80 *sprite-y*)
     (jsr 'dude1)
 
-    (poke 90 *sprite-x*)
+    (poke 100 *sprite-x*)
     (jsr 'dude1)
 
-    (jsr 'wait-for-vblank)
-    (poke 0 +spr-addr+)
-    (poke (msb *oam-shadow*) +sprite-dma+)
-    (poke #b10001000 +ppu-cr1+)
-    (poke #b00010100 +ppu-cr2+)
+    (poke 80 *sprite-x*)
+    (jsr 'dude2)
+
+    (jsr 'end-frame)
 
     (jmp (mem :loop))))
+
+(procedure end-frame
+  "Complete processing for one frame. Move sprites, do pending VRAM writes, etc."
+  (jsr 'wait-for-vblank)
+  (poke 0 +spr-addr+)
+  (poke (msb *oam-shadow*) +sprite-dma+)
+  (poke #b10001000 +ppu-cr1+)
+  (poke #b00010100 +ppu-cr2+)
+  (poke 0 +vram-addr+)                  ; Reset vram address register for scrolling
+  (poke 0 +vram-addr+)
+  (rts))
 
 (procedure reset-sprites
   (ldx (imm 0))
