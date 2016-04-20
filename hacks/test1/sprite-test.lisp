@@ -18,11 +18,17 @@
 
 ;;;; Globals
 
-(defparameter vblank-flag (zp #xFF))
+
 
 (defparameter *sprite-x* (zp #xF0))
 (defparameter *sprite-y* (zp #xF1))
-(defparameter *oamidx* (zp #xFF))
+(defparameter *shadow-cr1* (zp #xF2))
+(defparameter *shadow-cr2* (zp #xF3))
+(defparameter *shadow-scroll-x* (zp #xF4))
+(defparameter *shadow-scroll-y* (zp #xF5))
+
+(defparameter *oamidx* (zp #xFE))
+(defparameter vblank-flag (zp #xFF))
 
 (defparameter *oam-shadow* #x0200)
 
@@ -113,6 +119,10 @@
 
   ;; Main loop - wait for vblank, reset PPU registers, do sprite DMA.
   (with-label :loop
+    (poke #b10001000 *shadow-cr1*)
+    (poke #b00010100 *shadow-cr2*)
+    (poke 0 *shadow-scroll-x*)
+    (poke 0 *shadow-scroll-y*)
 
     (jsr 'reset-sprites)
     (poke 40 *sprite-x*)
@@ -132,12 +142,17 @@
 (procedure end-frame
   "Complete processing for one frame. Move sprites, do pending VRAM writes, etc."
   (jsr 'wait-for-vblank)
-  (poke 0 +spr-addr+)
-  (poke (msb *oam-shadow*) +sprite-dma+)
-  (poke #b10001000 +ppu-cr1+)
-  (poke #b00010100 +ppu-cr2+)
-  (poke 0 +vram-addr+)                  ; Reset vram address register for scrolling
-  (poke 0 +vram-addr+)
+  ;; If sprites are enabled, do DMA transfer
+  (lda (imm #b00010000))                ; Bit 4 - sprite enable bit
+  (bita *shadow-cr2*)
+  (asif :not-zero
+         (poke 0 +spr-addr+)
+         (poke (msb *oam-shadow*) +sprite-dma+))
+  (poke *shadow-cr1* +ppu-cr1+)
+  (poke *shadow-cr2* +ppu-cr2+)
+  (lda (mem +ppu-status+))                  ; Reset address latch
+  (poke *shadow-scroll-x* +vram-scroll+)
+  (poke *shadow-scroll-y* +vram-scroll+)
   (rts))
 
 (procedure reset-sprites
@@ -148,11 +163,8 @@
     (dex)))
 
 (procedure wait-for-vblank
-  (lda (imm 0))
-  (sta vblank-flag)
+  (poke 0 vblank-flag)
   (as/until :not-zero (lda vblank-flag))
-  (lda (imm 0))
-  (sta vblank-flag)
   (rts))
 
 (procedure brk-handler (rti))
