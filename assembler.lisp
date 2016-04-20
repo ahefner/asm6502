@@ -565,12 +565,18 @@
 
 ;;;; Syntactic sugar
 
-;;; For absolute and absolute indexed modes, resolve labels automatically.
+;;; For absolute and absolute indexed modes, resolve labels
+;;; automatically. Permit both symbols and lists (compared under
+;;; EQUAL) as labels.
 (defmethod operand-dwim ((op absolute-mode) (parameter symbol)) (label parameter))
+(defmethod operand-dwim ((op absolute-mode) (parameter cons)) (label parameter))
 
 ;;; For the JSR instruction, accept a label directly as the parameter,
 ;;; because there's only one addressing mode.
 (defmethod assemble ((mnemonic (eql 'JSR)) (parameter symbol))
+  (assemble mnemonic (mem (label parameter))))
+
+(defmethod assemble ((mnemonic (eql 'JSR)) (parameter cons))
   (assemble mnemonic (mem (label parameter))))
 
 ;;; Similarly for branch instructions..

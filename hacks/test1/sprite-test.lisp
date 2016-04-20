@@ -76,13 +76,13 @@
      (sty *oamidx*)
      (rts)))
 
-(defsprite dude1
+(defsprite (sage f 0)
   (0 0 #x00 1)
   (8 0 #x01 1)
   (0 8 #x10 0)
   (8 8 #x11 0))
 
-(defsprite dude2
+(defsprite (wiz f 0)
   (0 0 #x02 0)
   (8 0 #x03 0)
   (0 8 #x12 0)
@@ -127,13 +127,16 @@
     (jsr 'reset-sprites)
     (poke 40 *sprite-x*)
     (poke 80 *sprite-y*)
-    (jsr 'dude1)
+    (jsr '(sage f 0))
 
     (poke 100 *sprite-x*)
-    (jsr 'dude1)
+    (jsr '(sage f 0))
 
     (poke 80 *sprite-x*)
-    (jsr 'dude2)
+    (jsr '(wiz f 0))
+
+    (poke 120 *sprite-x*)
+    (jsr '(wiz f 0))
 
     (jsr 'end-frame)
 
