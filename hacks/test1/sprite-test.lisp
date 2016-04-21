@@ -119,7 +119,8 @@
 
   ;; Main loop - wait for vblank, reset PPU registers, do sprite DMA.
   (with-label :loop
-    (poke #b10001000 *shadow-cr1*)
+    ;; FIXME: sprite chr table address behaving backward vs what I expect..
+    (poke #b10000000 *shadow-cr1*)
     (poke #b00010100 *shadow-cr2*)
     (poke 0 *shadow-scroll-x*)
     (poke 0 *shadow-scroll-y*)
@@ -190,5 +191,5 @@
 (write-ines "/tmp/sprite1.nes"
             (link *context*)
             :chr (concatenate 'vector
-                              (ichr:encode-chr (ichr:read-gif (asset-path "spr0.gif")))
+                              (ichr:encode-chr (ichr:read-gif (asset-path "bg0.gif")))
                               (ichr:encode-chr (ichr:read-gif (asset-path "spr0.gif")))))
