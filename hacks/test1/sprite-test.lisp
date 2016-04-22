@@ -27,6 +27,8 @@
 (defparameter *shadow-scroll-x* (zp #xF4))
 (defparameter *shadow-scroll-y* (zp #xF5))
 
+(defparameter *frame-counter* (zp #xFD)
+  "Incremented each frame by NMI handler")
 (defparameter *oamidx* (zp #xFE))
 (defparameter vblank-flag (zp #xFF))
 
@@ -82,6 +84,12 @@
   (0 8 #x10 0)
   (8 8 #x11 0))
 
+(defsprite (sage f 1)
+  (0 0 #x00 1)
+  (8 0 #x01 1)
+  (8 8 #x10 0 :fliph)
+  (0 8 #x11 0 :fliph))
+
 (defsprite (wiz f 0)
   (0 0 #x02 0)
   (8 0 #x03 0)
@@ -98,17 +106,40 @@
 
   ;; Init sound hardware
   (poke 0 #x4015)                     ; Silence all channels
-  (poke #x40 #x4017)                  ; Disable IRQ !!
+  (poke #x40 #x4017)                  ; Disable IRQ
 
   (as/until :negative (bita (mem +ppu-status+))) ; PPU warmup interval
   (as/until :negative (bita (mem +ppu-status+))) ; (two frames)
 
   (poke 0 vblank-flag)
+  (lda (mem +ppu-status+))            ; Clear vblank flag before enabling NMI!
   (poke #b10001000 +ppu-cr1+)         ; Enable NMI
 
+  ;; Reset background
+  (jsr 'wait-for-vblank)
+  ;; Fill first name table screen
+  (lda (mem +ppu-status+))            ; Reset address latch
+  (ppuaddr #x2000)
+  (lda (imm 4))
+  (ldy (imm 8))
+  (as/until :zero
+    (ldx (imm 0))
+    (as/until :zero
+      (sta (mem +vram-io+))
+      (dex))
+    (dey))
+  ;; Fill second screen
+  (ppuaddr #x2400)
+  (lda (imm 5))
+  (ldy (imm 8))
+  (as/until :zero
+    (ldx (imm 0))
+    (as/until :zero
+      (sta (mem +vram-io+))
+      (dex))
+    (dey))
+
   ;; Palette init
-  (jsr 'wait-for-vblank)
-  (jsr 'wait-for-vblank)
   (jsr 'wait-for-vblank)
   (ppuaddr #x3F00)
   (let ((bg #x1B))
@@ -120,24 +151,76 @@
   ;; Main loop - wait for vblank, reset PPU registers, do sprite DMA.
   (with-label :loop
     ;; FIXME: sprite chr table address behaving backward vs what I expect..
-    (poke #b10000000 *shadow-cr1*)
-    (poke #b00010100 *shadow-cr2*)
+    (poke #b10010000 *shadow-cr1*)
+    (poke #b00011100 *shadow-cr2*)
     (poke 0 *shadow-scroll-x*)
     (poke 0 *shadow-scroll-y*)
 
     (jsr 'reset-sprites)
-    (poke 40 *sprite-x*)
-    (poke 80 *sprite-y*)
-    (jsr '(sage f 0))
+    (poke 40 *sprite-y*)
 
-    (poke 100 *sprite-x*)
+    (poke 20 *sprite-x*)
+    (jsr '(wiz f 0))
+
+    (poke 40 *sprite-x*)
     (jsr '(sage f 0))
 
     (poke 80 *sprite-x*)
     (jsr '(wiz f 0))
 
-    (poke 120 *sprite-x*)
+    (poke 100 *sprite-x*)
+    (jsr '(sage f 0))
+
+
+    (poke 60 *sprite-y*)
+
+    (poke 20 *sprite-x*)
     (jsr '(wiz f 0))
+
+    (poke 40 *sprite-x*)
+    (jsr '(sage f 0))
+
+    (poke 80 *sprite-x*)
+    (jsr '(wiz f 0))
+
+    (poke 100 *sprite-x*)
+    (lda (imm 16))
+    (bita *frame-counter*)
+    (asif :zero
+     (jsr '(sage f 0))
+     :else
+     (jsr '(sage f 1)))
+
+    ;; (poke 120 *sprite-x*)
+    ;; (jsr '(wiz f 0))
+
+
+
+    ;; (poke 80 *sprite-y*)
+
+    ;; (poke 20 *sprite-x*)
+    ;; (jsr '(wiz f 0))
+
+    ;; (poke 40 *sprite-x*)
+    ;; (jsr '(sage f 0))
+
+    ;; (poke 80 *sprite-x*)
+    ;; (jsr '(wiz f 0))
+
+    ;; (poke 100 *sprite-x*)
+    ;; (jsr '(sage f 0))
+
+    ;; (poke 120 *sprite-x*)
+    ;; (jsr '(wiz f 0))
+
+    ;; (poke 140 *sprite-x*)
+    ;; (jsr '(wiz f 0))
+
+    ;; (poke 160 *sprite-x*)
+    ;; (jsr '(wiz f 0))
+
+    ;; (poke 180 *sprite-x*)
+    ;; (jsr '(wiz f 0))
 
     (jsr 'end-frame)
 
@@ -176,6 +259,7 @@
 (procedure vblank-handler
   (php)
   (inc vblank-flag)
+  (inc *frame-counter*)
   (plp)
   (rti))
 
@@ -190,6 +274,7 @@
 
 (write-ines "/tmp/sprite1.nes"
             (link *context*)
+            :mirror-mode :vertical
             :chr (concatenate 'vector
                               (ichr:encode-chr (ichr:read-gif (asset-path "bg0.gif")))
                               (ichr:encode-chr (ichr:read-gif (asset-path "spr0.gif")))))
