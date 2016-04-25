@@ -29,6 +29,10 @@
     ((integer 0 255) (zp (1+ (wordvar-address of))))
     (promise (mem (delay :msb-of-wordvar ((address (wordvar-address of))) (1+ address))))))
 
+(defmethod asm6502::assemble ((opcode (eql 'JMP))
+                     (of wordvar))
+  (asm6502::assemble 'JMP (indirect (wordvar-address of))))
+
 (defstruct (wordval (:constructor wordval (value))) value)
 
 (defmethod lsb ((of wordval)) (imm (lsb (wordval-value of))))
