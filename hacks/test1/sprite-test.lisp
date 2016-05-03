@@ -322,7 +322,8 @@
   (lda (imm 255))
   (as/until :zero
     (sta (abx *oam-shadow*))
-    (dex)))
+    (dex))
+  (rts))
 
 (procedure wait-for-vblank
   (poke 0 vblank-flag)
