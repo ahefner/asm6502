@@ -16,13 +16,21 @@
 (defparameter *global-context* (make-instance 'basic-context :address #x8000))
 (setf *context* *global-context*)       ; yuck.
 
-;;;; Globals
+;;;; Memory map
+
+;;; 0000-0020: Temporaries for leaf functions (caller saved if used in non-leaves)
+(defconstant +temp-start+ 0)
+(defconstant +temp-end+ #x20)
+
+(defparameter current-ent-map-x (zp #xD0))
+(defparameter current-ent-map-y (zp #xD1))
+(defparameter current-ent-idx   (zp #xD2))
 
 (defparameter status-update-vector (wordvar #xE0)
   "Status bar updates by END-FRAME are done by setting this code pointer.")
 
-(defparameter *sprite-x* (zp #xF0))
-(defparameter *sprite-y* (zp #xF1))
+(defparameter sprite-x (zp #xF0))
+(defparameter sprite-y (zp #xF1))
 (defparameter *shadow-cr1* (zp #xF2))
 (defparameter *shadow-cr2* (zp #xF3))
 (defparameter *shadow-scroll-x* (zp #xF4))
@@ -36,6 +44,32 @@
 (defparameter vblank-flag (zp #xFF))
 
 (defparameter *oam-shadow* #x0200)
+
+;;; Game state
+
+;;; Game map is a 14x12 board
+
+;;; ENTITY MAP - contains unit type and owner
+;;;  76543210
+;;;  ttttttxx
+;;;  x - Owner (player 0..3)
+;;;  t - Element type (0 is invalid)
+;;;  Value of zero means no entity
+
+(defconstant +map-width+ 14)
+(defconstant +map-height+ 12)
+(defconstant +map-size+ (* +map-width+ +map-height+))
+
+(defconstant +entity-map+ #x300)
+
+;;;; Etc.
+
+(defparameter *character-mapping*
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()`~-_+=[]{};:'\",.<>/?\\| ")
+
+(defun map-string (string)
+  (map 'vector (lambda (char) (+ #xA0 (position char *character-mapping*))) string))
+
 
 
 ;;;; Code
@@ -56,7 +90,7 @@
       (lambda (spec)
         (destructuring-bind (x y tile palette &rest flags) spec
           ;; Write Y coordinate
-          (lda *sprite-y*)
+          (lda sprite-y)
           (unless (zerop y)
             (clc)
             (adc (imm y)))
@@ -71,7 +105,7 @@
           (sta (aby *oam-shadow*))
           (iny)
           ;; Write X coordinate
-          (lda *sprite-x*)
+          (lda sprite-x)
           (unless (zerop x)
             (clc)
             (adc (imm x)))
@@ -148,42 +182,14 @@
     (poke 0 *shadow-scroll-x*)
     (poke 0 *shadow-scroll-y*)
 
-    (jsr 'reset-sprites)
-    (poke 40 *sprite-y*)
+    (lda (imm 80))
+    (cmp *frame-counter*)
+    (asif :negative
+      (pokeword (label 'test-status-update) status-update-vector)
+      :else
+      (pokeword (label 'test-status-update-2) status-update-vector))
 
-    (poke 20 *sprite-x*)
-    (jsr '(wiz f 0))
-
-    (poke 40 *sprite-x*)
-    (jsr '(sage f 0))
-
-    (poke 80 *sprite-x*)
-    (jsr '(wiz f 0))
-
-    (poke 100 *sprite-x*)
-    (jsr '(sage f 0))
-
-
-    (poke 60 *sprite-y*)
-
-    (poke 20 *sprite-x*)
-    (jsr '(wiz f 0))
-
-    (poke 40 *sprite-x*)
-    (jsr '(sage f 0))
-
-    (poke 80 *sprite-x*)
-    (jsr '(wiz f 0))
-
-    (poke 100 *sprite-x*)
-    (lda (imm 16))
-    (bita *frame-counter*)
-    (asif :zero
-     (jsr '(sage f 0))
-     :else
-     (jsr '(sage f 1)))
-
-    (pokeword (label 'test-status-update) status-update-vector)
+    (jsr 'render-sprites)
 
     (jsr 'end-frame)
 
@@ -296,7 +302,13 @@
 
   (set-label 'test-status-update *global-context*)
   (ppuxy 2 2)
-  (loop for code across (map-string "Hi there.") do (poke code +vram-io+))
+  (loop for code across (map-string "All work and no play...") do (poke code +vram-io+))
+  (pokeword (label 'no-status-update) status-update-vector)
+  (jmp (mem :continue-from-status-update))
+
+  (set-label 'test-status-update-2 *global-context*)
+  (ppuxy 2 2)
+  (loop for code across (map-string "..makes Jack a dull boy.") do (poke code +vram-io+))
   (pokeword (label 'no-status-update) status-update-vector)
   (jmp (mem :continue-from-status-update)))
 
@@ -326,12 +338,61 @@
   (plp)
   (rti))
 
-(defparameter *character-mapping*
-  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()`~-_+=[]{};:'\",.<>/?\\| ")
+;;;; Gameplay
 
-(defun map-string (string)
-  (map 'vector (lambda (char) (+ #xA0 (position char *character-mapping*))) string))
+(procedure reset-game-map
+  (ldx (imm (1- +map-size+)))
+  (lda (imm 0))
+  (as/until :negative
+    (sta (abx +entity-map+))
+    (dex))
+  (rts))
 
+(procedure render-sprites
+  (dotimes (i 1000) (nop))
+  (brk) (db 7)
+  ;; FIXME: Clearing OAM shadow in advance is expensive (~23 lines).
+  ;; Better to count sprites during render and clear the unused ones in a last pass.
+  (jsr 'reset-sprites)
+  (ldy (imm 0))                         ; Local ent idx counter
+  (lda (imm 0))
+  (sta current-ent-idx)
+  (sta current-ent-map-y)
+  (poke 32 sprite-y)
+  (with-label :row-loop
+    (poke 16 sprite-x)
+    (poke 0 current-ent-map-x)
+
+    (brk) (db 0)
+
+    (with-label :col-loop
+      ;;(do something)
+
+      
+
+
+      (iny)                             ; Next ent index
+
+      (clc)                             ; Next X coordinate (on screen)
+      (lda (imm 16))
+      (adc sprite-x)
+      (inc current-ent-map-x)           ; Next X index (from 0)
+      (lda (imm +map-width+))
+      (cmp current-ent-map-x)
+      (bne :col-loop)
+
+      ;; End of column, increment Y vars
+      (clc)
+      (lda (imm 16))
+      (adc sprite-y)
+      (inc current-ent-map-y)
+      (cpy (imm +map-size+))
+      (beq :break)
+      (jmp (mem :row-loop))))
+
+  (set-label :break)
+  (brk) (db 2)
+  (rts))
 
 
 ;;;; End of program

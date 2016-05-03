@@ -30,7 +30,7 @@
     (promise (mem (delay :msb-of-wordvar ((address (wordvar-address of))) (1+ address))))))
 
 (defmethod asm6502::assemble ((opcode (eql 'JMP))
-                     (of wordvar))
+                              (of wordvar))
   (asm6502::assemble 'JMP (indirect (wordvar-address of))))
 
 (defstruct (wordval (:constructor wordval (value))) value)
