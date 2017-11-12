@@ -31,6 +31,8 @@ def python_8bit_dither(img, srclayer, x_offset, y_offset, x_chk, y_chk):
                 c = src_pixels[i]
                 if (c & 1):
                     c = c-1 if (((ph + x_offset) & 1) == 0) else c+1
+                if (c > 255):
+                    c = 255
                 src_pixels[i] = c
                 if x_chk: ph = ph ^ 1
                 i = i + 1
