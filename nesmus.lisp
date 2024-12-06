@@ -301,9 +301,7 @@
 (defmacro define-song (name (&key use-packages artist (copyright-holder artist)))
   (unless (stringp name)
     (error "Song name must be a string"))
-  (let* ((package-name (if (symbolp name)
-                           name
-                           (format nil "~A (song)" name)))
+  (let* ((package-name (format nil "~A (song)" name))
          (package (or (find-package package-name)
                       (make-package package-name)))
          (asm-fn-name (intern "ASSEMBLE-IN-CONTEXT" package)))
