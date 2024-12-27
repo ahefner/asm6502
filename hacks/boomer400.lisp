@@ -92,10 +92,8 @@
    ;; (poke #x3c 710)
    ;; (poke #x57 711)
 
-   ;;(poke #xD6 712)
-   (poke #x08 712)
-   (poke #x3A 708)
-   ;;(poke #x08 709)
+   (poke #x04 712)
+   (poke #x37 708)
    (poke #xD6 709)
    (poke #x00 710)
    (poke #xFE 711)
@@ -104,15 +102,6 @@
 
 
    (set-label :loop)
-
-   ;; (lda (zp 77))
-   ;; (sta (mem COLBK))
-   ;; (inc (zp 77))
-   ;; (nop)
-   ;; (nop)
-   ;; (nop)
-   ;; (nop)
-   (jmp (mem #xe471))
    (jmp (mem :loop))
 
    (with-label display-list
