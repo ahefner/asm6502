@@ -24,7 +24,12 @@
  (binary-file "/tmp/boomer400.car")
  (let* ((global (make-instance 'basic-context :address #xA000))
 	(*context* global))
-#+NIL
+
+   ;;; At the beginning of the ROM, for alignment convenience, we
+   ;;; place the character set.
+
+   ;; Palette test pattern.
+   #+NIL
    (db #b00000101
        #b00000101
        #b00000101
@@ -39,27 +44,18 @@
      (ichr:swizzle-rows 16
       (ichr:chunkify 2 8
        (ichr:read-gif (merge-pathnames "boomer3.gif" *path*))))))
-   
-   (db #b10000000
-       #b11000000
-       #b11100000
-       #b11110000
-       #b11111000
-       #b11111100
-       #b11111110
-       #b11111111 )
-   
+
+   ;;; Program starts here
    (set-label :start)
    (poke 0 SKCTL)
    (poke 3 SKCTL)
-;;   (poke #x22 DMACTL)
-;;   (poke #x3e SDMCTL)
    
    (poke 0 SDMCTL)
    (poke #x00 PMBASE)
    (poke #xA0 CHBAS)
 
-
+   ;;; For the moment we're looking at the zero page. Bash some
+   ;;; recognizable images in there.
    (poke 0 160)
    (poke 1 200)
    (poke 2 161)
@@ -80,55 +76,33 @@
    (poke 6 149)
    (poke 7 189)
 
-
-   ;;(pokeword (label 'display-list) DLIST)
    (pokeword (label 'display-list) SDLIST)
    (poke #x22 SDMCTL)
 
-   (poke #x56 (zp 77))
-   ;;(poke #x56 (mem COLBK))
-   ;; (poke #x07 708)			; Playfield colors
-   ;; (poke #x10 709)
-   ;; (poke #x3c 710)
-   ;; (poke #x57 711)
-
-   (poke #x04 712)
-   (poke #x37 708)
-   (poke #xD6 709)
-   (poke #x00 710)
-   (poke #xFE 711)
+   ;; Configure palette
+   (poke #x04 712)			; grey brackground
+   (poke #x37 708)			; vaguely red
+   (poke #xD6 709)			; green turf
+   (poke #x00 710)			; black
+   (poke #xFE 711)			; alt color - orange
    
-   
-
-
+   ;; Halt and catch fire
    (set-label :loop)
    (jmp (mem :loop))
 
    (with-label display-list
-     ;; (db #x70 #x70 #x70 #x42)
-     ;; ;; #x00 #x38
-     ;; ;;(dw (label 'message))
-     ;; (dw 0)
-     ;; (db #x02 #x02 #x02 #x02 #x82 #x70 #x86 #x70 #x70 #x02
-     ;; 	 #x70 #x07 #x70 #x30 #x06 #x70 #x06 #x70 #x30 #x06 #x70 #x70 #x02)
-
-     ;; Plain text mode display list
+     ;; Funky 5-color text mode
      (db #x70 #x70 #x70 #x44)
-     ;;(dw (label 'message))
-     ;;(dw #x3c40)
-     (dw 0)
+     (dw 0)				; Screen buffer
      (loop repeat 23 do (db #x04))
      (db #x41)
      (dw (label 'display-list)))
 
-   (with-label message
-     (loop for i from 0 below 256 do (db i))
-     (emit (map 'list 'char-code "  YOUR ATARI WORKS  "))
-     (emit (loop repeat 20 collect #x20)))
-
    (with-label :init
      (rts))
 
+   ;; At the end of the cartridge there are init and run vectors as well as
+   ;; a flags byte that the OS checks when booting.
    (advance-to #xBFFA)
    (dw (label :start) #x0400 (label :init))
    (link global)))
