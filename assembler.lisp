@@ -263,6 +263,8 @@
 
 (defun label (name &key (offset 0) (context *context*))
   (assert (not (null context)))
+  (when (integerp name)
+    (return-from label (+ name offset)))
   (delay name (offset)
     (+ offset
        (or (context-find-label context name)
