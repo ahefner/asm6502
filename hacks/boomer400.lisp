@@ -5,28 +5,56 @@
 
 (defvar *path* #.*compile-file-pathname*)
 
-;;; Atari constants
-(defconstant COLBK #xD01A)
-(defconstant SKCTL #xD20F)
-(defconstant DMACTL #xD400)
+;;;; Atari constants
 (defconstant SDMCTL #x22f)
-(defconstant PMBASE #xD407)
+(defconstant SDLIST #x230)
 (defconstant CHBAS 756)
 
-(defconstant SDLIST #x230)
-(defconstant DLIST #xD402)		; ...
-(defconstant DLISTL #xD402)
-(defconstant DLISTH #xD403)
+(defconstant SKCTL #xD20F)
+(defconstant DMACTL #xD400)
+(defconstant PMBASE #xD407)
 
-(defconstant CHBASE #xD409)
+;;;; Data structures
+
+;;; We're a cartridge, there's no DOS loaded, and I'm going to assume
+;;; everything from 600h upward is available to use.
+
+;;; Our logical playfield is 20x12 = 240 tiles
+;;; On screen each tile is 2x2 ANTIC mode 4 characters.
+;;; 
+
+;;; 20x12 map of gameplay tiles on screen
+
+;;; The scheme below doesn't work. Two shortcomings:
+;;;  1) Can't distinguish different bomb strengths
+;;;  2) Can't distinguish horizontal vs. vertical vs. intersecting explosions
+;;; 
+;;; For each byte:
+;;;  bit 7: tile impassable by player
+;;;  bit 5-6: tile type
+;;;   00: empty
+;;;   01: item or brick
+;;;   10: bomb       (this doesn't work if we have bomb upgrades!)
+;;;   11: explosion
+;;;  bits 4-0: countdown (bomb countdown or explosion progress) or item type
+;;;    item 00000: brick
+;;;    other items: ...
+(defconstant BOARD #x0600)
+
+;;; At 0700h I was going to put one of the AI pathfinding maps but probably
+;;; I'll need to use it for counters or something to fix the above mess.
+
+;;; 0800h is the screen buffer.
+
+;;;; Program
 
 (setf
  (binary-file "/tmp/boomer400.car")
  (let* ((global (make-instance 'basic-context :address #xA000))
 	(*context* global))
 
-   ;;; At the beginning of the ROM, for alignment convenience, we
-   ;;; place the character set.
+;;; At the beginning of the ROM, for alignment convenience, we
+;;; place the character set.
 
    ;; Palette test pattern.
    #+NIL
@@ -42,10 +70,10 @@
    (emit
     (ichr:append-rows
      (ichr:swizzle-rows 16
-      (ichr:chunkify 2 8
-       (ichr:read-gif (merge-pathnames "boomer3.gif" *path*))))))
+			(ichr:chunkify 2 8
+				       (ichr:read-gif (merge-pathnames "boomer3.gif" *path*))))))
 
-   ;;; Program starts here
+;;; Program starts here
    (set-label :start)
    (poke 0 SKCTL)
    (poke 3 SKCTL)
@@ -54,8 +82,8 @@
    (poke #x00 PMBASE)
    (poke #xA0 CHBAS)
 
-   ;;; For the moment we're looking at the zero page. Bash some
-   ;;; recognizable images in there.
+;;; For the moment we're looking at the zero page. Bash some
+;;; recognizable images in there.
    (poke 0 160)
    (poke 1 200)
    (poke 2 161)
