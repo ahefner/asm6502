@@ -24,6 +24,9 @@
 (defparameter TILEIDX (zp 132))
 (defparameter TILETYPE (zp 133))
 
+(defparameter PRNGLO (zp 134))
+(defparameter PRNGHI (zp 135))
+
 ;;;; Data structures
 
 ;;; We're a cartridge, there's no DOS loaded, and I'm going to assume
@@ -99,37 +102,67 @@
    (poke #x00 PMBASE)
    (poke #xA0 CHBAS)
 
-   ;; Configure palette
+   ;; Configure palette and finish display setup
    (poke #x04 712)			; grey brackground
    (poke #x37 708)			; vaguely red
    (poke #xD6 709)			; green turf
    (poke #x00 710)			; black
    (poke #xFE 711)			; alt color - orange
-
-;;; I set us up the bomb
-   (poke 6 (+ SCREEN 256 0))
-   (poke 26 (+ SCREEN 256 40))
-   (poke 7 (+ SCREEN 256 1))
-   (poke 27 (+ SCREEN 256 41))
-
-   ;;; Test out the screen drawing function
-   (poke 4 TILEIDX)
-   (poke 0 TY)
-   (poke 19 TX)
-   (as/until :zero
-     (jsr 'draw-tile)
-     (dec TX)
-     #+NIL (dec TX))
-
-   (jsr 'draw-tile)
-   ;;(poke 8 TILEIDX)
-   (poke #b10010000 TILETYPE)
-   (poke 3 TY)
-   (poke 2 TX)
-   (jsr 'set-tile)
-
    (pokeword (label 'display-list) SDLIST)
    (poke #x22 SDMCTL)
+
+   ;; Initialize random board
+   (poke 10 TY)
+   (as/until :negative
+     (poke 18 TX)
+     (as/until :negative
+       (jsr 'getrand)
+       (asif :negative
+	 (lda (imm #x00))			; default - empty square
+	 :else
+	 (lda (imm #b10010000)))	; brick
+       (sta TILETYPE)
+       (lda (imm 1))
+       (bita TX)
+       (asif :not-zero			; Place indestructible barriers on grid
+	 (bita TY)
+	 (asif :not-zero
+	   (lda (imm #b10000000))
+	   (sta TILETYPE)))
+       (jsr 'set-tile)
+       (dec TX))
+     (dec TY))
+
+   ;; Zero out the corners of the board so the player always has a starting position
+   (poke 0 TILETYPE)
+   (poke 0 TX)
+   (poke 0 TY)
+   (jsr 'set-tile)
+   (inc TX)
+   (jsr 'set-tile)
+   (poke 17 TX)
+   (jsr 'set-tile)
+   (inc TX)
+   (jsr 'set-tile)
+   (poke 0 TX)
+   (inc TY)
+   (jsr 'set-tile)
+   (poke 18 TX)
+   (jsr 'set-tile)
+   (poke 0 TX)
+   (poke 10 TY)
+   (jsr 'set-tile)
+   (inc TX)
+   (jsr 'set-tile)
+   (poke 17 TX)
+   (jsr 'set-tile)
+   (inc TX)
+   (jsr 'set-tile)
+   (poke 0 TX)
+   (dec TY)
+   (jsr 'set-tile)
+   (poke 18 TX)
+   (jsr 'set-tile)
    
    ;; Halt and catch fire
    (set-label :loop)
@@ -212,7 +245,26 @@
      (sta (abx BOARD))
      (rts))
 
+   (procedure getrand
+     (asl PRNGLO)
+     (rol PRNGHI)
+     (asif :carry
+       (lda PRNGHI)
+       (eor (imm #x11))
+       (sta PRNGHI)
+       (lda PRNGLO)
+       (eor (imm #xC9))
+       (sta PRNGLO))
+     (lda PRNGLO)
+     (rts))
+
    (with-label :init
+     ;; Initialize PRNG  (maybe)
+     (lda PRNGHI)
+     (asif :zero
+       (lda (imm #x57))
+       (sta PRNGLO)
+       (sta PRNGHI))
      (rts))
 
    (print `(remaining space is ,(- #xBFFA *origin*) bytes))
