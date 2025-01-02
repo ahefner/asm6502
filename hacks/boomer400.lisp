@@ -102,12 +102,22 @@
    (poke #x00 PMBASE)
    (poke #xA0 CHBAS)
 
+   (poke 192 #xD40E)			; NMIEN - enable DLI
+   (poke (lsb (label 'dli-handler)) 512)
+   (poke (msb (label 'dli-handler)) 513)
+
    ;; Configure palette and finish display setup
    (poke #x04 712)			; grey brackground
    (poke #x37 708)			; vaguely red
    (poke #xD6 709)			; green turf
    (poke #x00 710)			; black
    (poke #xFE 711)			; alt color - orange
+
+   ;; Change of plans - set the colors for the logo, let the DLI fix
+   ;; them back to the playfield colors.
+   (poke #x1A 708)
+   (poke #x14 709)
+
    (pokeword (label 'display-list) SDLIST)
    (poke #x22 SDMCTL)
 
@@ -168,16 +178,37 @@
    (set-label :loop)
    (jmp (mem :loop))
 
+   (with-label dli-handler
+     (pha)
+     (lda (imm #x8F))
+     (poke #x37 #xD016)			; vaguely red
+     (poke #xD6 #xD017)			; green turf
+
+     ;;(poke 0 #xD40F)			; clear NMI status. not sure if I should do this or no.
+     (pla)
+     (rti))
+
+   (with-label titlebar
+     (loop for i from 0 below 18 do (db (+ i 40)))
+     (loop repeat 22 do (db 60))
+     (loop for i from 0 below 18 do (db (+ i 60)))
+     (loop repeat 22 do (db 60)))
+
+   ;; Display list for funky 5-color text mode
    (with-label display-list
-     ;; Funky 5-color text mode
-     (db #x70 #x70 #x70)
-     ;; Give each pair of lines its own page. This wastes 12*(256-80)
+     (db #x70 #x70)
+     ;; Stick the title header up top with LMS to ROM
+     (db #x44)
+     (dw (label 'titlebar))
+     (db #x04)
+     (db #xF0)				; blank line + DLI
+     ;; Give each pair of lines its own page. This wastes 11*(256-80)
      ;; bytes of RAM but simplifies the math for drawing tiles on the
      ;; screen - and no one says we can't sqeeze extra data in the gaps.
-     (loop for y upto 11 do
-	   (db #x44)
-	   (dw (+ SCREEN (* y 256)))
-	   (db #x04))
+     (loop for y upto 10 do
+       (db #x44)
+       (dw (+ SCREEN (* y 256)))
+       (db #x04))
      (db #x41)
      (dw (label 'display-list)))
 
