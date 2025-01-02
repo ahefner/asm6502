@@ -194,9 +194,12 @@
    (jsr 'set-tile)
    (poke 18 TX)
    (jsr 'set-tile)
+
+   ;; TODO / Idea? Force extra bricks to distance players on the left and right edges.
    
    ;; Halt and catch fire
    (set-label :loop)
+   (poke 0 77)				; pin this to disable ATTRACT mode
    (jmp (mem :loop))
 
    (with-label dli-handler
