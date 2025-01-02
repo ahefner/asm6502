@@ -118,6 +118,27 @@
    (poke #x1A 708)
    (poke #x14 709)
 
+   ;; Draw in the borders on the left and right playfield edges
+   (poke (msb SCREEN) TEMP-PTR-H)
+   (ldx (imm 10))
+   (as/until :negative
+     (poke 0 TEMP-PTR-L)
+     (lda (imm 58))			; playfield left border feather
+     (ldy (imm 0))
+     (sta TEMP-PTR)
+     (ldy (imm 40))
+     (sta TEMP-PTR)
+     (lda (imm 59))			; playfield right border feather
+     (ldy (imm 39))
+     (sta TEMP-PTR)
+     (ldy (imm 79))
+     (sta TEMP-PTR)
+
+     (inc TEMP-PTR-H)			; advance to next row
+     (dex))
+
+
+   ;; Should I do this after drawing the board? Yes, probably.
    (pokeword (label 'display-list) SDLIST)
    (poke #x22 SDMCTL)
 
@@ -194,7 +215,8 @@
      (loop for i from 0 below 18 do (db (+ i 60)))
      (loop repeat 22 do (db 60)))
 
-   ;; Display list for funky 5-color text mode
+   ;; Display list for funky 5-color text mode.
+   ;; I should move this somewhere stable so I'm not risking alignment issues..
    (with-label display-list
      (db #x70 #x70)
      ;; Stick the title header up top with LMS to ROM
@@ -221,6 +243,7 @@
      (lda TX)
      (asl)
      (sta TEMP-PTR-L)
+     (inc TEMP-PTR-L)			; offset everything right by 1 character
      (lda (imm 0))
      (tay)
      (lda TILEIDX)
