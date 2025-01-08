@@ -106,7 +106,7 @@
    (poke 0 SDMCTL)
    (poke (msb MY-PMBASE-VAL) PMBASE)
    (poke #xA0 CHBAS)
-   (poke #b00111010 #xD400) ; DMACTL - normal playfield, DMA + single line players
+   (poke 0 #xD400)			; DMACTL - screen off
 
    ;; TEMP: test player pattern
    (let ((y 0))
@@ -211,6 +211,8 @@
    (jsr 'set-tile)
 
    ;; TODO / Idea? Force extra bricks to distance players on the left and right edges.
+
+   (poke #b00111010 #xD400) ; DMACTL - normal playfield, DMA + single line players
    
    ;; Halt and catch fire
    (set-label :loop)
