@@ -59,8 +59,13 @@
 ;;; have to check two places.
 (defconstant COUNTERS #x0700)
 
-;;; 0800h - 0DFFh is the screen buffer.
+;;; 1000h - 1AFFh is the screen buffer.
+;;; Not actually quite 1AFF as there is much empty space in each page.
 (defconstant SCREEN #x1000)
+
+;;; If we point PMBASE at $1800 then missiles start at $1B00 and players at $1C00.
+(defconstant MY-PMBASE-VAL #x1800)
+(defconstant MY-PM0-BUF (+ MY-PMBASE-VAL 1024))
 
 ;;;; Program
 
@@ -99,8 +104,18 @@
    (poke 3 SKCTL)
    
    (poke 0 SDMCTL)
-   (poke #x00 PMBASE)
+   (poke (msb MY-PMBASE-VAL) PMBASE)
    (poke #xA0 CHBAS)
+   (poke #b00111010 #xD400) ; DMACTL - normal playfield, DMA + single line players
+
+   ;; TEMP: test player pattern
+   (let ((y 0))
+     (poke #b11111111 (+ 0 y #x1C30))	; 48 pixels into the page to get us to 0,0 on the game grid
+     (poke #b11111111 (+ 1 y #x1C30))
+     (loop for foo from 2 upto 13 do
+       (poke #b10000001 (+ foo y #x1C30)))
+     (poke #b11111111 (+ 14 y #x1C30))
+     (poke #b11111111 (+ 15 y #x1C30)))
 
    (poke 192 #xD40E)			; NMIEN - enable DLI
    (poke (lsb (label 'dli-handler)) 512)
@@ -123,12 +138,12 @@
    (ldx (imm 10))
    (as/until :negative
      (poke 0 TEMP-PTR-L)
-     (lda (imm 58))			; playfield left border feather
+     (lda (imm 58))		       ; playfield left border feather
      (ldy (imm 0))
      (sta TEMP-PTR)
      (ldy (imm 40))
      (sta TEMP-PTR)
-     (lda (imm 59))			; playfield right border feather
+     (lda (imm 59))		      ; playfield right border feather
      (ldy (imm 39))
      (sta TEMP-PTR)
      (ldy (imm 79))
@@ -149,13 +164,13 @@
      (as/until :negative
        (jsr 'getrand)
        (asif :negative
-	 (lda (imm #x00))			; default - empty square
+	 (lda (imm #x00))		; default - empty square
 	 :else
 	 (lda (imm #b10010000)))	; brick
        (sta TILETYPE)
        (lda (imm 1))
        (bita TX)
-       (asif :not-zero			; Place indestructible barriers on grid
+       (asif :not-zero	       ; Place indestructible barriers on grid
 	 (bita TY)
 	 (asif :not-zero
 	   (lda (imm #b10000000))
@@ -199,7 +214,19 @@
    
    ;; Halt and catch fire
    (set-label :loop)
-   (poke 0 77)				; pin this to disable ATTRACT mode
+   (poke 0 77)			    ; pin this to disable ATTRACT mode
+   ;;   (poke #x55 #xD00D)
+   (poke #b00000001 #x26F)		; GPRIOR
+   (poke #x1F #xD012)			; COLPM0
+   (poke #x6F #xD013)			; COLPM1
+   (poke #xAF #xD014)			; COLPM2
+   (poke #xEF #xD015)			; COLPM3
+   (poke #b00111010 #x22f) ; Enable screen DMA and players (no missiles)
+   (poke 52 #xD000)	   ; HPOSP0
+   (poke 60 #xD001)	   ; HPOSP1
+   (poke 68 #xD002)	   ; HPOSP2
+   (poke 76 #xD003)	   ; HPOSP3
+   (poke 2 #xD01D)	   ; GRACTL enable players
    (jmp (mem :loop))
 
    (with-label dli-handler
@@ -211,6 +238,9 @@
      ;;(poke 0 #xD40F)			; clear NMI status. not sure if I should do this or no.
      (pla)
      (rti))
+
+   ;;; Don't ask.
+   #+NIL (with-label titlebar (loop repeat 80 do (db 0)))
 
    (with-label titlebar
      (loop for i from 0 below 18 do (db (+ i 40)))
@@ -246,7 +276,7 @@
      (lda TX)
      (asl)
      (sta TEMP-PTR-L)
-     (inc TEMP-PTR-L)			; offset everything right by 1 character
+     (inc TEMP-PTR-L)	      ; offset everything right by 1 character
      (lda (imm 0))
      (tay)
      (lda TILEIDX)
@@ -281,7 +311,7 @@
 	   (lda (imm 2)))		; brick
 	 (sta TILEIDX)
 	 (rts)
-	 :else				; non-negative
+	 :else			    ; non-negative
 	 ;; TODO: Explosion. bomb, or item.
 	 (poke 6 TILEIDX)
 	 (rts))))
