@@ -179,6 +179,43 @@
        (dec TX))
      (dec TY))
 
+   ;; Add extra bricks to make it unlikely the player can run too far
+   ;; from their starting corner
+   ;;(poke #b10000000 TILETYPE)		; barrier
+   (poke #b10010000 TILETYPE)		; barrierbrick
+   ;; Left and right edges - three brick barrier
+   (poke 0 TX)
+   (poke 4 TY)
+   (jsr 'set-tile)
+   (inc TY)
+   (jsr 'set-tile)
+   (inc TY)
+   (jsr 'set-tile)
+   (poke 18 TX)
+   (jsr 'set-tile)
+   (dec TY)
+   (jsr 'set-tile)
+   (dec TY)
+   (jsr 'set-tile)
+
+   ;; Single bricks at the center of the top and bottom row
+   (poke 9 TX)
+   (poke 0 TY)
+   (jsr 'set-tile)
+   (poke 10 TY)
+   (jsr 'set-tile)
+
+   ;; Fence in the top and bottom row so player can run at most 4 squares left/right
+   (poke 4 TX)
+   (poke 0 TY)
+   (jsr 'set-tile)
+   (poke 10 TY)
+   (jsr 'set-tile)
+   (poke 14 TX)
+   (jsr 'set-tile)
+   (poke 0 TY)
+   (jsr 'set-tile)
+
    ;; Zero out the corners of the board so the player always has a starting position
    (poke 0 TILETYPE)
    (poke 0 TX)
