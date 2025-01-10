@@ -106,11 +106,12 @@
    (poke 0 SDMCTL)
    (poke (msb MY-PMBASE-VAL) PMBASE)
    (poke #xA0 CHBAS)
-   (poke 0 #xD400)			; DMACTL - screen off
+   (poke 0 #xD400)			; DMACTL
+   (poke 0 SDMCTL)
 
    ;; TEMP: test player pattern
    (let ((y 0))
-     (poke #b11111111 (+ 0 y #x1C30))	; 48 pixels into the page to get us to 0,0 on the game grid
+     (poke #b11111111 (+ 0 y #x1C30)) ; 48 pixels into the page to get us to 0,0 on the game grid
      (poke #b11111111 (+ 1 y #x1C30))
      (loop for foo from 2 upto 13 do
        (poke #b10000001 (+ foo y #x1C30)))
@@ -151,11 +152,6 @@
 
      (inc TEMP-PTR-H)			; advance to next row
      (dex))
-
-
-   ;; Should I do this after drawing the board? Yes, probably.
-   (pokeword (label 'display-list) SDLIST)
-   (poke #x22 SDMCTL)
 
    ;; Initialize random board
    (poke 10 TY)
@@ -282,8 +278,10 @@
    (poke 18 TX)
    (jsr 'set-tile)
 
-   ;; TODO / Idea? Force extra bricks to distance players on the left and right edges.
+   ;; In hindsight all the above map tweaking wastes hundreds of bytes
+   ;; and I could've done it much more simply..
 
+   (pokeword (label 'display-list) SDLIST)
    (poke #b00111010 #xD400) ; DMACTL - normal playfield, DMA + single line players
    
    ;; Halt and catch fire
