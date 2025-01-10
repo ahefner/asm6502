@@ -182,7 +182,7 @@
    ;; Add extra bricks to make it unlikely the player can run too far
    ;; from their starting corner
    ;;(poke #b10000000 TILETYPE)		; barrier
-   (poke #b10010000 TILETYPE)		; barrierbrick
+   (poke #b10010000 TILETYPE)		; brick
    ;; Left and right edges - three brick barrier
    (poke 0 TX)
    (poke 4 TY)
@@ -215,6 +215,41 @@
    (jsr 'set-tile)
    (poke 0 TY)
    (jsr 'set-tile)
+
+   ;; Also the first four-way junctions nearest the corners
+   (poke 2 TX)
+   (poke 2 TY)
+   (jsr 'set-tile)
+   (poke 16 TX)
+   (jsr 'set-tile)
+   (poke 8 TY)
+   (jsr 'set-tile)
+   (poke 2 TX)
+   (jsr 'set-tile)
+
+   ;; And, randomly, their inward corridors... first the top..
+   (poke 3 TX)
+   (poke 2 TY)
+   (jsr 'maybe-set-tile)
+   (poke 15 TX)
+   (jsr 'maybe-set-tile)
+   (poke 2 TX)
+   (poke 3 TY)
+   (jsr 'maybe-set-tile)
+   (poke 16 TX)
+
+   ;; Then the bottom..
+   (jsr 'maybe-set-tile)
+   (poke 3 TX)
+   (poke 8 TY)
+   (jsr 'maybe-set-tile)
+   (poke 15 TX)
+   (jsr 'maybe-set-tile)
+   (poke 2 TX)
+   (poke 7 TY)
+   (jsr 'maybe-set-tile)
+   (poke 16 TX)
+   (jsr 'maybe-set-tile)
 
    ;; Zero out the corners of the board so the player always has a starting position
    (poke 0 TILETYPE)
@@ -357,6 +392,11 @@
 
    (set-label 'table-mul-by-20)
    (loop for i from 0 below 12 do (db (* i 20)))
+
+   (procedure maybe-set-tile
+     (jsr 'getrand)
+     (asif :negative			; return, else fall through into set-tile
+       (rts)))
 
    (procedure set-tile
      "Sets (into BOARD) and draws (into SCREEN, by way of DRAW-TILE) a tile of TILETYPE at TX / TY"
