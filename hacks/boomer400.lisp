@@ -14,6 +14,9 @@
 (defconstant DMACTL #xD400)
 (defconstant PMBASE #xD407)
 
+(defconstant PACTL #xD302)
+(defconstant PORTA #xD300)
+
 (defparameter TX (zp 128))
 (defparameter TY (zp 129))
 
@@ -26,6 +29,11 @@
 
 (defparameter PRNGLO (zp 134))
 (defparameter PRNGHI (zp 135))
+
+(defparameter P1X (zp 136))
+
+(defparameter VBI-COUNT (zp 160))
+
 
 ;;;; Data structures
 
@@ -278,12 +286,17 @@
    (poke 18 TX)
    (jsr 'set-tile)
 
+   (poke 52 P1X)
+
    ;; In hindsight all the above map tweaking wastes hundreds of bytes
    ;; and I could've done it much more simply..
 
    (pokeword (label 'display-list) SDLIST)
    (poke #b00111010 #xD400) ; DMACTL - normal playfield, DMA + single line players
-   
+
+   (poke 0 VBI-COUNT)
+   (pokeword (label :vbi-handler) 548)	; VVBLKD - deferred VBI handler
+
    ;; Halt and catch fire
    (set-label :loop)
    (poke 0 77)			    ; pin this to disable ATTRACT mode
@@ -294,11 +307,17 @@
    (poke #xAF #xD014)			; COLPM2
    (poke #xEF #xD015)			; COLPM3
    (poke #b00111010 #x22f) ; Enable screen DMA and players (no missiles)
-   (poke 52 #xD000)	   ; HPOSP0
+   (poke P1X #xD000)	   ; HPOSP0
    (poke 60 #xD001)	   ; HPOSP1
    (poke 68 #xD002)	   ; HPOSP2
    (poke 76 #xD003)	   ; HPOSP3
    (poke 2 #xD01D)	   ; GRACTL enable players
+
+   (poke 0 VBI-COUNT)
+   (with-label :waiting-for-vbi
+     (lda VBI-COUNT)
+     (beq :waiting-for-vbi))
+   (jsr 'gamestep)
    (jmp (mem :loop))
 
    (with-label dli-handler
@@ -421,6 +440,21 @@
        (sta PRNGLO))
      (lda PRNGLO)
      (rts))
+
+   (procedure gamestep
+     ;;(lda (abs PORTA))
+     (poke #x04 PACTL)
+     (lda (imm #x01))
+     (bita (mem PORTA))
+     (asif :zero
+       (inc P1X))
+     (rts))
+
+   (procedure :vbi-handler
+     (inc P1X)				; XXX TEST
+     (inc VBI-COUNT)
+     (jmp (mem #xE462)))		; exit deferred vbi
+
 
    (with-label :init
      ;; Initialize PRNG  (maybe)
