@@ -77,6 +77,17 @@
 
 ;;;; Program
 
+(defun prepend-simple-cart-header (data)
+  (assert (= (length data) 8192))
+  (let ((checksum (reduce #'+ data)))
+    (concatenate
+     'vector
+     (vector 67 65 82 84			; CART
+	     0 0 0 1 			; simple 8 KB cart type
+	     0 (ldb (byte 8 16) checksum) (ldb (byte 8 8) checksum) (ldb (byte 8 0) checksum)
+	     0 0 0 0)
+     data)))
+
 (setf
  (binary-file "/tmp/boomer400.car")
  (let* ((global (make-instance 'basic-context :address #xA000))
@@ -471,4 +482,5 @@
    ;; a flags byte that the OS checks when booting.
    (advance-to #xBFFA)
    (dw (label :start) #x0400 (label :init))
-   (link global)))
+   (prepend-simple-cart-header
+    (link global))))
